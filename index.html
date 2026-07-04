@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ViewCamera Assistant v1.0α31</title>
+<title>ViewCamera Assistant v1.0α32</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:#050507;color:white;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;overflow:hidden}
@@ -91,12 +91,166 @@ input,select{width:100%;background:#232329;color:#fff;border:1px solid #ffffff22
 details{margin-top:14px;background:#101014;border:1px solid #ffffff18;border-radius:14px;padding:12px}
 summary{font-weight:900;color:#fff;cursor:pointer}
 details p{font-size:12px;margin-bottom:0}
+
+/* α32 Mobile UI refactor */
+:root{
+  --tab-h: 74px;
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
+}
+@media (max-width: 760px){
+  html,body{height:100%;overflow:hidden}
+  #app{height:100svh;overflow:hidden}
+  .top{
+    height:calc(72px + var(--safe-top));
+    padding:calc(10px + var(--safe-top)) 18px 8px;
+    align-items:flex-start;
+  }
+  .title{font-size:22px;line-height:1.15}
+  .sub{font-size:14px}
+  .seg{
+    top:calc(76px + var(--safe-top));
+    z-index:8;
+  }
+
+  #shoot svg{
+    position:absolute;
+    top:calc(104px + var(--safe-top));
+    left:0;
+    right:0;
+    height:calc(100svh - var(--safe-top) - var(--safe-bottom) - 104px - 188px - var(--tab-h));
+    min-height:330px;
+    width:100%;
+  }
+  #shoot .read{
+    left:12px;
+    right:12px;
+    bottom:calc(var(--tab-h) + var(--safe-bottom) + 8px);
+    padding:10px;
+    border-radius:18px;
+    max-height:172px;
+    overflow:hidden;
+  }
+  #shoot .cards{
+    display:flex !important;
+    grid-template-columns:none !important;
+    gap:8px;
+    overflow-x:auto;
+    scroll-snap-type:x proximity;
+    padding-bottom:4px;
+    -webkit-overflow-scrolling:touch;
+  }
+  #shoot .card{
+    min-width:112px;
+    flex:0 0 auto;
+    scroll-snap-align:start;
+    padding:10px;
+    border-radius:14px;
+  }
+  #shoot .card:first-child{min-width:128px}
+  #shoot .v{font-size:22px}
+  #shoot #guideV{font-size:18px}
+  #shoot .hint{
+    font-size:11px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    margin-top:4px;
+  }
+
+  #threeD .top{pointer-events:none}
+  #threeControls{
+    top:calc(78px + var(--safe-top)) !important;
+    left:14px !important;
+    right:auto !important;
+    max-width:calc(100vw - 120px);
+    gap:7px;
+    flex-wrap:wrap;
+  }
+  .smallBtn{
+    padding:7px 11px;
+    font-size:14px;
+  }
+  #threeD canvas#canvas3d{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+  }
+  #axis3d{
+    left:auto !important;
+    right:14px !important;
+    top:calc(100px + var(--safe-top)) !important;
+    bottom:auto !important;
+    width:96px !important;
+    height:96px !important;
+    border-radius:14px;
+    z-index:9;
+    opacity:.92;
+  }
+  #threeD:after{
+    content:"ピンチ:拡大縮小　ドラッグ:回転　ダブルタップ:リセット";
+    position:absolute;
+    left:14px;
+    right:14px;
+    bottom:calc(var(--tab-h) + var(--safe-bottom) + 10px);
+    color:#ffffff99;
+    font-size:12px;
+    z-index:4;
+    pointer-events:none;
+  }
+
+  #setup,#info,#measure{
+    padding:calc(72px + var(--safe-top)) 14px calc(var(--tab-h) + var(--safe-bottom) + 18px) !important;
+  }
+  .box{border-radius:18px;padding:14px}
+  .measureGrid{grid-template-columns:1fr 1fr}
+
+  #tabs{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    height:calc(var(--tab-h) + var(--safe-bottom));
+    padding:8px 8px calc(8px + var(--safe-bottom));
+    z-index:20;
+    grid-template-columns:repeat(5,1fr) !important;
+    background:rgba(21,21,24,.94);
+    backdrop-filter:blur(16px);
+  }
+  .tab{font-size:11px}
+  .tab span{font-size:22px}
+  svg,canvas{max-width:100%}
+}
+
+@media (orientation: landscape) and (max-height: 520px){
+  #shoot svg{
+    top:50px;
+    left:0;
+    width:calc(100vw - 270px);
+    height:calc(100svh - 58px);
+    min-height:0;
+  }
+  #shoot .read{
+    top:58px;
+    right:10px;
+    left:auto;
+    bottom:calc(var(--safe-bottom) + 8px);
+    width:250px;
+    max-height:none;
+    overflow:auto;
+  }
+  #shoot .cards{display:grid !important;grid-template-columns:1fr 1fr !important;overflow:visible}
+  #shoot .card{min-width:0}
+  #axis3d{width:82px !important;height:82px !important}
+}
+
 </style>
 </head>
 <body>
 <div id="app">
 <section id="shoot" class="screen active">
-  <div class="top"><div><div class="title">ビューカメラ・シミュレーター</div><div class="sub" id="viewName">横断面 / Tilt</div></div><div class="sub">v1.0α31</div></div>
+  <div class="top"><div><div class="title">ビューカメラ・シミュレーター</div><div class="sub" id="viewName">横断面 / Tilt</div></div><div class="sub">v1.0α32</div></div>
   <div class="seg"><button id="sideBtn" class="on">横断面</button><button id="topBtn">俯瞰</button></div>
 
   <svg id="svg" viewBox="0 0 390 650" preserveAspectRatio="xMidYMid meet">
@@ -248,7 +402,7 @@ details p{font-size:12px;margin-bottom:0}
     <div class="row"><div class="a">横断面</div><div class="b">Tilt</div></div>
     <div class="row"><div class="a">俯瞰図</div><div class="b">Swing</div></div>
     <div class="row"><div class="a">倍率</div><div class="b" id="infoMag">0.92×</div></div><div class="row"><div class="a">F値</div><div class="b" id="infoF">F16</div></div><div class="row"><div class="a">CoC</div><div class="b" id="infoCoC">0.015mm</div></div><div class="row"><div class="a">光学Core</div><div class="b" id="infoEngine">3D Plane α</div></div><div class="row"><div class="a">交線</div><div class="b" id="infoIntersection">計算中</div></div><div class="row"><div class="a">Focus法線</div><div class="b" id="infoFocusNormal">-</div></div><div class="row"><div class="a">Hinge距離</div><div class="b" id="infoHinge">-</div></div><div class="row"><div class="a">DOF内部</div><div class="b" id="infoDOF">OFF</div></div><div class="row"><div class="a">検証状態</div><div class="b" id="infoTest">Field Test</div></div>
-    <p>v1.0α31はUI確認用です。光学計算は次版以降で正確化します。</p>
+    <p>v1.0α32はUI確認用です。光学計算は次版以降で正確化します。</p>
   <div class="box"><h1>実機検証メモ</h1><p>1. Macro-Symmar HM 180mmを選択<br>2. 蛇腹長を実測入力<br>3. 商品面を実際の配置に合わせる<br>4. Front/Rearを動かし、GFXライブビューでピント面が一致するか確認<br>5. ズレた角度をメモ</p></div></div>
 </section>
 
@@ -606,7 +760,7 @@ window.addEventListener("mousemove",move); window.addEventListener("mouseup",end
 window.addEventListener("touchmove",move,{passive:false}); window.addEventListener("touchend",end);
 
 
-let view3={yaw:-35,pitch:-24,auto:false,drag:false,x:0,y:0};
+let view3={yaw:-35,pitch:-24,zoom:1,auto:false,drag:false,x:0,y:0,lastDist:0};
 
 function project3DPoint(p,w,h){
   const yaw=rad(view3.yaw), pit=rad(view3.pitch);
@@ -614,7 +768,7 @@ function project3DPoint(p,w,h){
   let z=p.x*Math.sin(yaw)+p.z*Math.cos(yaw);
   let y=p.y*Math.cos(pit)-z*Math.sin(pit);
   z=p.y*Math.sin(pit)+z*Math.cos(pit);
-  const s=460/(460+z);
+  const s=(460*(view3.zoom||1))/(460+z);
   return {x:w/2+x*s,y:h/2-y*s,z,s};
 }
 function plane3D(cx,cy,cz,w,h,tilt,swing){
@@ -708,9 +862,9 @@ function drawAxis3D(){
   ctx.fillText("Y奥行",8,r.height-16);
   ctx.fillText("Z上下",8,r.height-4);
 }
-function setObliqueView(){view3.yaw=-35;view3.pitch=-24;view3.auto=false;draw3D();drawAxis3D();}
-function setSideView3D(){view3.yaw=-90;view3.pitch=0;view3.auto=false;draw3D();drawAxis3D();}
-function setTopView3D(){view3.yaw=0;view3.pitch=90;view3.auto=false;draw3D();drawAxis3D();}
+function setObliqueView(){view3.yaw=-35;view3.pitch=-24;view3.zoom=1;view3.auto=false;draw3D();drawAxis3D();}
+function setSideView3D(){view3.yaw=-90;view3.pitch=0;view3.zoom=1;view3.auto=false;draw3D();drawAxis3D();}
+function setTopView3D(){view3.yaw=0;view3.pitch=90;view3.zoom=1;view3.auto=false;draw3D();drawAxis3D();}
 
 function setup3DControls(){
   const c=$("canvas3d"); if(!c || c.dataset.ready) return;
@@ -849,6 +1003,7 @@ window.addEventListener("load", function(){
   if (oblique) oblique.onclick = function(){
     view3.yaw = -35;
     view3.pitch = -24;
+    view3.zoom = 1;
     view3.auto = false;
     safeDraw();
   };
@@ -856,6 +1011,7 @@ window.addEventListener("load", function(){
   if (side) side.onclick = function(){
     view3.yaw = -90;
     view3.pitch = 0;
+    view3.zoom = 1;
     view3.auto = false;
     safeDraw();
   };
@@ -863,6 +1019,7 @@ window.addEventListener("load", function(){
   if (top) top.onclick = function(){
     view3.yaw = 0;
     view3.pitch = 90;
+    view3.zoom = 1;
     view3.auto = false;
     safeDraw();
   };
@@ -898,6 +1055,53 @@ window.addEventListener("load", function(){
     });
   }
   setObliqueView();
+});
+</script>
+
+
+<script>
+window.addEventListener("load", function(){
+  const canvas = document.getElementById("canvas3d");
+  if(!canvas || canvas.dataset.alpha32Gestures) return;
+  canvas.dataset.alpha32Gestures = "1";
+
+  function redraw(){
+    if(typeof draw3D === "function") draw3D();
+    if(typeof drawAxis3D === "function") drawAxis3D();
+  }
+  function dist(t1,t2){
+    const dx=t1.clientX-t2.clientX, dy=t1.clientY-t2.clientY;
+    return Math.sqrt(dx*dx+dy*dy);
+  }
+
+  canvas.addEventListener("wheel", function(e){
+    e.preventDefault();
+    view3.zoom = Math.max(.55, Math.min(2.2, (view3.zoom||1) * (e.deltaY<0 ? 1.08 : .92)));
+    redraw();
+  }, {passive:false});
+
+  canvas.addEventListener("touchstart", function(e){
+    if(e.touches.length===2){
+      view3.lastDist = dist(e.touches[0], e.touches[1]);
+    }
+  }, {passive:false});
+
+  canvas.addEventListener("touchmove", function(e){
+    if(e.touches.length===2){
+      e.preventDefault();
+      const d = dist(e.touches[0], e.touches[1]);
+      if(view3.lastDist){
+        view3.zoom = Math.max(.55, Math.min(2.2, (view3.zoom||1) * (d/view3.lastDist)));
+      }
+      view3.lastDist = d;
+      redraw();
+    }
+  }, {passive:false});
+
+  canvas.addEventListener("dblclick", function(){
+    view3.yaw=-35; view3.pitch=-24; view3.zoom=1; view3.auto=false;
+    redraw();
+  });
 });
 </script>
 
