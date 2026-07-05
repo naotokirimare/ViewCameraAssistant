@@ -58,3 +58,5 @@
     grid-template-columns:1fr;
   }
 }
+
+.product.match{stroke:#00ff80;stroke-width:9;}

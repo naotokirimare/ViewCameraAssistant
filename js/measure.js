@@ -121,12 +121,12 @@ function applyMeasurementToModel(showMessage=true){
   const swing = state.sensor.swing;
 
   if(target === "front"){
-    state.data.side.front = clamp(tilt, -35, 35);
-    state.data.top.front = clamp(swing, -35, 35);
+    state.data.side.front = clamp(tilt, -90, 90);
+    state.data.top.front = clamp(swing, -90, 90);
   }
   if(target === "rear"){
-    state.data.side.rear = clamp(tilt, -35, 35);
-    state.data.top.rear = clamp(swing, -35, 35);
+    state.data.side.rear = clamp(tilt, -90, 90);
+    state.data.top.rear = clamp(swing, -90, 90);
   }
   if(target === "product"){
     state.data.side.product = clamp(tilt, -180, 180);
