@@ -266,3 +266,146 @@
     border-top:0!important;
   }
 }
+
+
+/* α44: robust iPhone landscape + wide invisible hit areas */
+.hitLine{
+  stroke:transparent;
+  stroke-width:34;
+  stroke-linecap:round;
+  pointer-events:stroke;
+  cursor:grab;
+}
+@media(max-width:760px){
+  .hitLine{stroke-width:44}
+}
+
+/* override all previous landscape rules */
+@media (orientation:landscape) and (max-height:520px){
+  html,body,#app{
+    width:100vw!important;
+    height:100svh!important;
+    overflow:hidden!important;
+  }
+  #app{
+    display:block!important;
+    position:relative!important;
+  }
+  .screen{
+    position:absolute!important;
+    inset:0!important;
+    width:100vw!important;
+    height:100svh!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .screen.active{
+    display:block!important;
+  }
+  .top{
+    height:44px!important;
+    padding:6px 86px 4px 10px!important;
+    pointer-events:none!important;
+  }
+  .title{font-size:16px!important;line-height:1.1!important}
+  .sub,.version{font-size:10px!important}
+  .seg{
+    top:46px!important;
+    left:calc((100vw - 78px - 240px)/2)!important;
+    transform:translateX(-50%) scale(.78)!important;
+    transform-origin:center top!important;
+  }
+  #shoot .stage2d,.stage2d{
+    position:absolute!important;
+    top:76px!important;
+    left:0!important;
+    width:calc(100vw - 252px)!important;
+    height:calc(100svh - 84px)!important;
+    min-height:0!important;
+  }
+  #svg2d{
+    width:100%!important;
+    height:100%!important;
+  }
+  #shoot .read{
+    position:absolute!important;
+    top:48px!important;
+    right:80px!important;
+    left:auto!important;
+    bottom:8px!important;
+    width:168px!important;
+    max-height:none!important;
+    overflow:auto!important;
+    padding:8px!important;
+    border-radius:14px!important;
+  }
+  #shoot .cards{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:6px!important;
+    overflow:visible!important;
+  }
+  #shoot .card{
+    min-width:0!important;
+    padding:8px!important;
+  }
+  #shoot .v{font-size:17px!important}
+  #shoot .hint,.shootMeasure{display:none!important}
+
+  #canvas3d{
+    position:absolute!important;
+    inset:0!important;
+    width:calc(100vw - 78px)!important;
+    height:100svh!important;
+  }
+  #threeControls{
+    top:48px!important;
+    left:10px!important;
+    right:auto!important;
+    max-width:250px!important;
+    transform:none!important;
+  }
+  #axis3d{
+    top:50px!important;
+    right:88px!important;
+    width:72px!important;
+    height:72px!important;
+  }
+  .threeHint{
+    bottom:10px!important;
+    right:90px!important;
+    left:10px!important;
+  }
+  #setup,#info,#measure{
+    position:absolute!important;
+    inset:0!important;
+    padding:48px 88px 12px 12px!important;
+    overflow:auto!important;
+    height:100svh!important;
+    width:100vw!important;
+  }
+  .box{
+    max-width:none!important;
+  }
+  #tabs{
+    position:fixed!important;
+    top:0!important;
+    right:0!important;
+    left:auto!important;
+    bottom:0!important;
+    width:78px!important;
+    height:100svh!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    grid-template-rows:repeat(5,1fr)!important;
+    padding:8px!important;
+    border-left:1px solid #ffffff22!important;
+    border-top:0!important;
+    z-index:50!important;
+  }
+  .tab{
+    font-size:10px!important;
+    border-radius:12px!important;
+  }
+  .tab span{font-size:18px!important}
+}
