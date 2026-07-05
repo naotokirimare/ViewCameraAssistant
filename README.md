@@ -1,19 +1,29 @@
-# ViewCamera Assistant v1.0α31 Measurement Mode
+# ViewCamera Assistant v1.0α32
 
-追加:
-- 測定モードタブ
-- iPhoneのDeviceOrientationでTilt / Swingを取得
-- センサー許可ボタン
-- ゼロ補正
-- 現在値を図に反映
-- リアルタイム反映ON/OFF
-- 測定対象:
-  - レンズ面（Front）
-  - センサー面（Rear）
-  - 商品面
-  - カメラ角度
-  - 読むだけ
+複数ファイル構成へ移行したモバイルUI改善版です。
 
-注意:
-- Safari/iOSではHTTPSまたはローカル条件によってセンサー許可が必要です。
-- 取り付け向きによる反転は次版でキャリブレーション項目を追加予定です。
+## 変更点
+
+- iPhoneで2D図と情報カードが重ならないように修正
+- 情報カードを横スクロール化
+- 3DのXYZ軸を右上へ移動・縮小
+- 3Dにピンチズーム追加
+- セーフエリア対応
+- α31の測定モードを維持
+- 今後の開発のために CSS / JS を分割
+
+## 構成
+
+```text
+index.html
+css/style.css
+js/state.js
+js/optics.js
+js/draw2d.js
+js/draw3d.js
+js/measure.js
+js/app.js
+assets/
+```
+
+GitHub Desktopでは、このフォルダごと上書きして Commit → Push してください。
