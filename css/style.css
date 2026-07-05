@@ -182,3 +182,87 @@
     display:none;
   }
 }
+
+
+/* α43: remove fine controls, prioritize drawing area */
+.fineControls{display:none!important}
+@media(max-width:760px){
+  #shoot .read{
+    max-height:176px!important;
+  }
+  #shoot .stage2d, .stage2d{
+    height:calc(100svh - var(--safe-top) - var(--safe-bottom) - 104px - 190px - var(--tab-h))!important;
+    min-height:335px!important;
+  }
+  .focus.match{
+    stroke-width:3!important;
+  }
+  .front,.rear{
+    stroke-width:10;
+  }
+  .camera{
+    stroke-width:8;
+  }
+}
+
+@media (orientation:landscape) and (max-height:520px){
+  .top{
+    height:46px!important;
+    padding:8px 12px!important;
+  }
+  .title{font-size:18px!important}
+  .sub,.version{font-size:11px!important}
+  .seg{
+    top:50px!important;
+    transform:translateX(-50%) scale(.86);
+  }
+  #shoot .stage2d, .stage2d{
+    top:48px!important;
+    left:0!important;
+    width:calc(100vw - 310px)!important;
+    height:calc(100svh - 54px)!important;
+    min-height:0!important;
+  }
+  #shoot .read{
+    top:54px!important;
+    right:84px!important;
+    left:auto!important;
+    bottom:calc(var(--safe-bottom) + 8px)!important;
+    width:220px!important;
+    max-height:calc(100svh - 70px)!important;
+    overflow:auto!important;
+  }
+  #threeD canvas#canvas3d{
+    inset:0!important;
+    width:100%!important;
+    height:100%!important;
+  }
+  #threeControls{
+    top:50px!important;
+    left:10px!important;
+    max-width:260px!important;
+  }
+  #axis3d{
+    top:52px!important;
+    right:76px!important;
+    width:72px!important;
+    height:72px!important;
+  }
+  #setup,#info,#measure{
+    padding:52px 86px 12px 12px!important;
+    overflow:auto!important;
+  }
+  #tabs{
+    width:74px!important;
+    right:0!important;
+    left:auto!important;
+    top:0!important;
+    bottom:0!important;
+    height:100svh!important;
+    grid-template-columns:1fr!important;
+    grid-template-rows:repeat(5,1fr)!important;
+    padding:8px!important;
+    border-left:1px solid #ffffff22;
+    border-top:0!important;
+  }
+}
