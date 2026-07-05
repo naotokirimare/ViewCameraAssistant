@@ -3,7 +3,7 @@ function updateReferenceHelp(){
   const help = $("referenceHelp");
   if(!help) return;
   if(ref === "vertical"){
-    help.innerHTML = "背面垂直: Tiltはbeta±90°補正、Swingは-alpha±90°補正で測ります。カメラアングル決定後にゼロ補正すると、Front/Rearの相対角を測れます。";
+    help.innerHTML = "背面垂直: Tiltはbeta±90°補正、Swingは-alphaを正規化してから±90°補正で測ります。カメラアングル決定後にゼロ補正すると、Front/Rearの相対角を測れます。";
   }else{
     help.innerHTML = "背面水平: 従来通り、スマホ背面を水平面に置いた状態をTilt/Swing 0°にします。机上測定向けです。";
   }
@@ -43,19 +43,20 @@ function rawToTiltSwing(e){
     // Swing = -alpha（回転方向をビューカメラのSwing方向に合わせる）
     return {
       tilt: beta,
-      swing: -alpha
+      swing: angle180(-alpha)
     };
   }
 
   // 背面垂直:
   // Tilt = beta ±90°補正
-  // Swing = -alpha ±90°補正
+  // Swing = -alpha を -180〜180 に正規化してから ±90°補正
   const tiltBase = beta >= 0 ? 90 : -90;
-  const swingBase = (-alpha) >= 0 ? 90 : -90;
+  const swingRaw = angle180(-alpha);
+  const swingBase = swingRaw >= 0 ? 90 : -90;
 
   return {
     tilt: beta - tiltBase,
-    swing: (-alpha) - swingBase
+    swing: swingRaw - swingBase
   };
 }
 
