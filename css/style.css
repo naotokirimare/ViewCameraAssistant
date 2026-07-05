@@ -60,3 +60,46 @@
 }
 
 .focus.match{stroke:#00ff80;stroke-width:4.2;opacity:1}
+
+
+/* α40 mobile controls */
+.fineControls{
+  margin-top:8px;
+  display:grid;
+  gap:7px;
+}
+.fineLabel{
+  font-size:11px;
+  color:#aaa;
+}
+#fineTarget{
+  padding:9px 10px;
+  font-size:13px;
+  border-radius:12px;
+}
+.fineButtons{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:6px;
+}
+.fineButtons .miniBtn{
+  padding:8px 4px;
+  font-size:12px;
+}
+@media(max-width:760px){
+  .focus.match{
+    stroke-width:3.4!important;
+  }
+  #shoot .read{
+    max-height:278px;
+  }
+  #shoot .stage2d, .stage2d{
+    height:calc(100svh - var(--safe-top) - var(--safe-bottom) - 104px - 292px - var(--tab-h));
+    min-height:235px;
+  }
+}
+@media(min-width:761px){
+  .fineControls{
+    display:none;
+  }
+}

@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ViewCamera Assistant v1.0α39</title>
+<title>ViewCamera Assistant v1.0α40</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div id="app">
 <section id="shoot" class="screen active">
-<header class="top"><div><div class="title">ビューカメラ・シミュレーター</div><div class="sub" id="viewName">横断面 / Tilt</div></div><div class="version">v1.0α39</div></header>
+<header class="top"><div><div class="title">ビューカメラ・シミュレーター</div><div class="sub" id="viewName">横断面 / Tilt</div></div><div class="version">v1.0α40</div></header>
 <div class="seg"><button id="sideBtn" class="on">横断面</button><button id="topBtn">俯瞰</button></div>
 <main class="stage2d"><svg id="svg2d" viewBox="0 0 390 650" preserveAspectRatio="xMidYMid meet">
 <g id="sideView"><line id="sideProduct" class="line product"/><line id="sideFocus" class="line focus"/><line id="sideScheimLineA" class="scheimLine"/><line id="sideScheimLineB" class="scheimLine"/><line id="sideScheimLineC" class="scheimLine"/><circle id="sideScheimPoint" r="6" class="scheim"/><line id="sideCameraAxis" class="line camera"/><rect id="sideBody" class="body" rx="12"/><line id="sideLens" class="line front"/><line id="sideSensor" class="line rear"/><circle id="sideProductCenter" r="9" class="centerMark"/><circle id="sideProductCenterDot" r="2.8" class="centerMarkInner"/><circle id="sideCameraH" r="12" fill="#c7c7cc"/><circle id="sideLensH" r="13" fill="#64d2ff"/><circle id="sideSensorH" r="13" fill="#ff9f0a"/><text id="sideProductLabel" class="label">被写体 Tilt</text><text id="sideLensLabel" class="label frontText">レンズ面</text><text id="sideSensorLabel" class="label rearText">センサー面</text><text id="sideFocusLabel" class="label focusText">ピント面</text></g>
@@ -21,6 +21,22 @@
         <div class="shootMeasureActions">
           <button class="miniBtn" id="shootLiveToggle" type="button">リアルタイムOFF</button>
           <button class="miniBtn primaryMini" id="shootApplyMeasure" type="button">現在値を反映</button>
+        </div>
+      </div>
+      <div class="fineControls">
+        <div class="fineLabel">微調整</div>
+        <select id="fineTarget">
+          <option value="product">被写体面</option>
+          <option value="camera">カメラ角度</option>
+          <option value="front">レンズ面</option>
+          <option value="rear">センサー面</option>
+        </select>
+        <div class="fineButtons">
+          <button class="miniBtn" data-step="-5" type="button">−5°</button>
+          <button class="miniBtn" data-step="-1" type="button">−1°</button>
+          <button class="miniBtn" data-step="1" type="button">＋1°</button>
+          <button class="miniBtn" data-step="5" type="button">＋5°</button>
+          <button class="miniBtn" id="fineReset" type="button">0°</button>
         </div>
       </div></aside>
 </section>
