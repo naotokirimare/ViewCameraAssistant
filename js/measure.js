@@ -51,6 +51,7 @@ async function startSensor(){
 
     window.removeEventListener("deviceorientation", onDeviceOrientation, true);
     window.addEventListener("deviceorientation", onDeviceOrientation, true);
+
     state.sensor.active = true;
     if($("sensorStatus")) $("sensorStatus").innerHTML = "測定中。Tilt / Swingを読み取っています。";
     updateMeasureStatus();
@@ -142,33 +143,43 @@ function applyMeasurementToModel(showMessage=true){
 }
 
 function setupMeasurement(){
-  if($("sensorToggleBtn")) $("sensorToggleBtn").onclick = toggleSensor;
-  if($("zeroSensor")) $("zeroSensor").onclick = zeroSensor;
-  if($("resetZeroSensor")) $("resetZeroSensor").onclick = resetZeroSensor;
-  if($("applyMeasure")) $("applyMeasure").onclick = () => applyMeasurementToModel(true);
+  const toggle = $("sensorToggleBtn");
+  if(toggle) toggle.addEventListener("click", toggleSensor);
 
-  if($("measureTarget")){
-    $("measureTarget").onchange = () => {
-      state.sensor.target = $("measureTarget").value;
+  const zero = $("zeroSensor");
+  if(zero) zero.addEventListener("click", zeroSensor);
+
+  const reset = $("resetZeroSensor");
+  if(reset) reset.addEventListener("click", resetZeroSensor);
+
+  const apply = $("applyMeasure");
+  if(apply) apply.addEventListener("click", () => applyMeasurementToModel(true));
+
+  const target = $("measureTarget");
+  if(target){
+    target.addEventListener("change", () => {
+      state.sensor.target = target.value;
       updateMeasureStatus();
-    };
+    });
   }
 
-  if($("liveApply")){
-    $("liveApply").onchange = () => setLiveApply($("liveApply").checked);
-  }
+  const live = $("liveApply");
+  if(live) live.addEventListener("change", () => setLiveApply(live.checked));
 
-  if($("shootApplyMeasure")){
-    $("shootApplyMeasure").onclick = (e) => {
+  const shootApply = $("shootApplyMeasure");
+  if(shootApply){
+    shootApply.addEventListener("click", (e) => {
       e.preventDefault();
       applyMeasurementToModel(true);
-    };
+    });
   }
-  if($("shootLiveToggle")){
-    $("shootLiveToggle").onclick = (e) => {
+
+  const shootLive = $("shootLiveToggle");
+  if(shootLive){
+    shootLive.addEventListener("click", (e) => {
       e.preventDefault();
       toggleLiveApply();
-    };
+    });
   }
 
   updateMeasureStatus();
