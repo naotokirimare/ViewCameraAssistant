@@ -3,7 +3,7 @@ function updateReferenceHelp(){
   const help = $("referenceHelp");
   if(!help) return;
   if(ref === "vertical"){
-    help.innerHTML = "背面垂直: Tiltはbeta±90°補正、Swingは-alphaを正規化してから±90°補正で測ります。カメラアングル決定後にゼロ補正すると、Front/Rearの相対角を測れます。";
+    help.innerHTML = "背面垂直: Tiltはbeta±90°補正、Swingは-alphaの軸を垂直方向へ90°回転させて測ります。カメラアングル決定後にゼロ補正すると、Front/Rearの相対角を測れます。";
   }else{
     help.innerHTML = "背面水平: 従来通り、スマホ背面を水平面に置いた状態をTilt/Swing 0°にします。机上測定向けです。";
   }
@@ -40,7 +40,7 @@ function rawToTiltSwing(e){
   if(state.sensor.reference === "horizontal"){
     // 背面水平:
     // Tilt = beta
-    // Swing = -alpha（回転方向をビューカメラのSwing方向に合わせる）
+    // Swing = -alpha
     return {
       tilt: beta,
       swing: angle180(-alpha)
@@ -49,14 +49,15 @@ function rawToTiltSwing(e){
 
   // 背面垂直:
   // Tilt = beta ±90°補正
-  // Swing = -alpha を -180〜180 に正規化してから ±90°補正
+  // Swing = -alpha の「軸」を垂直方向へ90°回転させる。
+  // 数値に対して±90°を後から引くのではなく、
+  // -alpha の基準軸そのものを90°回した値として扱う。
   const tiltBase = beta >= 0 ? 90 : -90;
-  const swingRaw = angle180(-alpha);
-  const swingBase = swingRaw >= 0 ? 90 : -90;
+  const verticalSwing = angle180((-alpha) + 90);
 
   return {
     tilt: beta - tiltBase,
-    swing: swingRaw - swingBase
+    swing: verticalSwing
   };
 }
 
