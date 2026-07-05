@@ -125,3 +125,13 @@
 #lensMaker,#lensSeries,#lensFocal{
   margin-bottom:2px;
 }
+
+
+/* α50 measurement reference */
+#measureReference{margin-bottom:4px}
+#referenceHelp{
+  background:#ffffff0d;
+  border:1px solid #ffffff18;
+  border-radius:12px;
+  padding:10px;
+}

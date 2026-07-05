@@ -1,32 +1,47 @@
+function updateReferenceHelp(){
+  const ref = $("measureReference") ? $("measureReference").value : state.sensor.reference || "vertical";
+  const help = $("referenceHelp");
+  if(!help) return;
+  if(ref === "vertical"){
+    help.innerHTML = "背面垂直: スマホを立てた状態をTilt/Swing 0°にします。カメラアングル決定後にゼロ補正すると、Front/Rearの相対角を測れます。";
+  }else{
+    help.innerHTML = "背面水平: 従来通り、スマホ背面を水平面に置いた状態をTilt/Swing 0°にします。机上測定向けです。";
+  }
+}
+
 function updateMeasureStatus(){
   const targetSelect = $("measureTarget");
-  const targetLabel = targetSelect
-    ? targetSelect.selectedOptions[0].textContent.replace("に反映","")
-    : "Front";
+  const targetLabel = targetSelect ? targetSelect.selectedOptions[0].textContent.replace("に反映","") : "Front";
   const active = state.sensor.active ? "測定中" : "停止中";
   const live = state.sensor.liveApply ? "リアルタイムON" : "リアルタイムOFF";
+  const ref = state.sensor.reference === "horizontal" ? "水平基準" : "垂直基準";
 
-  if($("shootMeasureStatus")) {
-    $("shootMeasureStatus").textContent = `測定: ${active} / ${live} / ${targetLabel}`;
-  }
-  if($("shootLiveToggle")) {
-    $("shootLiveToggle").textContent = state.sensor.liveApply ? "リアルタイムON" : "リアルタイムOFF";
-  }
-  if($("liveApply")) {
-    $("liveApply").checked = state.sensor.liveApply;
-  }
+  if($("shootMeasureStatus")) $("shootMeasureStatus").textContent = `測定: ${active} / ${live} / ${ref} / ${targetLabel}`;
+  if($("shootLiveToggle")) $("shootLiveToggle").textContent = state.sensor.liveApply ? "リアルタイムON" : "リアルタイムOFF";
+  if($("liveApply")) $("liveApply").checked = state.sensor.liveApply;
   if($("sensorToggleBtn")){
     $("sensorToggleBtn").textContent = state.sensor.active ? "測定停止" : "測定開始";
     $("sensorToggleBtn").className = state.sensor.active ? "dangerBtn" : "primary";
   }
+  updateReferenceHelp();
+}
+
+function rawToTiltSwing(e){
+  const beta = (typeof e.beta === "number") ? e.beta : 0;
+  const gamma = (typeof e.gamma === "number") ? e.gamma : 0;
+
+  if(state.sensor.reference === "horizontal"){
+    return { tilt: beta, swing: gamma };
+  }
+
+  const verticalBase = beta >= 0 ? 90 : -90;
+  return { tilt: beta - verticalBase, swing: gamma };
 }
 
 function onDeviceOrientation(e){
-  const rawTilt = (typeof e.beta === "number") ? e.beta : 0;
-  const rawSwing = (typeof e.gamma === "number") ? e.gamma : 0;
-
-  state.sensor.tilt = clamp(rawTilt - state.sensor.zeroTilt, -90, 90);
-  state.sensor.swing = clamp(rawSwing - state.sensor.zeroSwing, -90, 90);
+  const mapped = rawToTiltSwing(e);
+  state.sensor.tilt = clamp(mapped.tilt - state.sensor.zeroTilt, -90, 90);
+  state.sensor.swing = clamp(mapped.swing - state.sensor.zeroSwing, -90, 90);
 
   if($("measTilt")) $("measTilt").textContent = state.sensor.tilt.toFixed(1) + "°";
   if($("measSwing")) $("measSwing").textContent = state.sensor.swing.toFixed(1) + "°";
@@ -37,8 +52,7 @@ function onDeviceOrientation(e){
 
 async function startSensor(){
   try{
-    if(typeof DeviceOrientationEvent !== "undefined" &&
-       typeof DeviceOrientationEvent.requestPermission === "function"){
+    if(typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function"){
       const res = await DeviceOrientationEvent.requestPermission();
       if(res !== "granted"){
         if($("sensorStatus")) $("sensorStatus").innerHTML = "センサー許可が拒否されました。Safariの設定を確認してください。";
@@ -47,10 +61,8 @@ async function startSensor(){
         return;
       }
     }
-
     window.removeEventListener("deviceorientation", onDeviceOrientation, true);
     window.addEventListener("deviceorientation", onDeviceOrientation, true);
-
     state.sensor.active = true;
     if($("sensorStatus")) $("sensorStatus").innerHTML = "測定中。Tilt / Swingを読み取っています。";
     updateMeasureStatus();
@@ -82,7 +94,7 @@ function zeroSensor(){
   state.sensor.swing = 0;
   if($("measTilt")) $("measTilt").textContent = "0.0°";
   if($("measSwing")) $("measSwing").textContent = "0.0°";
-  if($("sensorStatus")) $("sensorStatus").innerHTML = "ゼロ補正しました。";
+  if($("sensorStatus")) $("sensorStatus").innerHTML = "ゼロ補正しました。現在のカメラアングルを基準0として、Front/Rearの相対角を測れます。";
   updateMeasureStatus();
 }
 
@@ -96,9 +108,7 @@ function resetZeroSensor(){
 function setLiveApply(on){
   state.sensor.liveApply = !!on;
   updateMeasureStatus();
-  if(state.sensor.liveApply){
-    applyMeasurementToModel(false);
-  }
+  if(state.sensor.liveApply) applyMeasurementToModel(false);
 }
 
 function toggleLiveApply(){
@@ -142,6 +152,15 @@ function applyMeasurementToModel(showMessage=true){
 }
 
 function setupMeasurement(){
+  if($("measureReference")){
+    $("measureReference").value = state.sensor.reference || "vertical";
+    $("measureReference").addEventListener("change", () => {
+      state.sensor.reference = $("measureReference").value;
+      resetZeroSensor();
+      updateMeasureStatus();
+    });
+  }
+
   const toggle = $("sensorToggleBtn");
   if(toggle) toggle.addEventListener("click", toggleSensor);
 
@@ -155,31 +174,25 @@ function setupMeasurement(){
   if(apply) apply.addEventListener("click", () => applyMeasurementToModel(true));
 
   const target = $("measureTarget");
-  if(target){
-    target.addEventListener("change", () => {
-      state.sensor.target = target.value;
-      updateMeasureStatus();
-    });
-  }
+  if(target) target.addEventListener("change", () => {
+    state.sensor.target = target.value;
+    updateMeasureStatus();
+  });
 
   const live = $("liveApply");
   if(live) live.addEventListener("change", () => setLiveApply(live.checked));
 
   const shootApply = $("shootApplyMeasure");
-  if(shootApply){
-    shootApply.addEventListener("click", (e) => {
-      e.preventDefault();
-      applyMeasurementToModel(true);
-    });
-  }
+  if(shootApply) shootApply.addEventListener("click", (e) => {
+    e.preventDefault();
+    applyMeasurementToModel(true);
+  });
 
   const shootLive = $("shootLiveToggle");
-  if(shootLive){
-    shootLive.addEventListener("click", (e) => {
-      e.preventDefault();
-      toggleLiveApply();
-    });
-  }
+  if(shootLive) shootLive.addEventListener("click", (e) => {
+    e.preventDefault();
+    toggleLiveApply();
+  });
 
   updateMeasureStatus();
 }
