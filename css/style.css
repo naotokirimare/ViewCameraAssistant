@@ -119,3 +119,9 @@
   content:"■ ";
   font-size:.75em;
 }
+
+
+/* α49 lens selector */
+#lensMaker,#lensSeries,#lensFocal{
+  margin-bottom:2px;
+}
