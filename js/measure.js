@@ -133,8 +133,8 @@ function applyMeasurementToModel(showMessage=true){
     state.data.top.product = clamp(swing, -180, 180);
   }
   if(target === "camera"){
-    state.data.side.camera = clamp(tilt, -45, 45);
-    state.data.top.camera = clamp(swing, -45, 45);
+    state.data.side.camera = clamp(tilt, -90, 90);
+    state.data.top.camera = clamp(swing, -90, 90);
   }
 
   update();
