@@ -17,8 +17,7 @@ function updateMeasureStatus(){
   }
   if($("sensorToggleBtn")){
     $("sensorToggleBtn").textContent = state.sensor.active ? "測定停止" : "測定開始";
-    $("sensorToggleBtn").classList.toggle("dangerBtn", state.sensor.active);
-    $("sensorToggleBtn").classList.toggle("primary", !state.sensor.active);
+    $("sensorToggleBtn").className = state.sensor.active ? "dangerBtn" : "primary";
   }
 }
 

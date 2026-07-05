@@ -94,3 +94,28 @@
   overflow:auto!important;
 }
 #canvas3d{display:block!important}
+
+
+/* α48: measurement start/stop button visual fix */
+#sensorToggleBtn{
+  width:100%;
+  border:0;
+  padding:15px;
+  border-radius:16px;
+  font-size:18px;
+  font-weight:950;
+  margin-top:16px;
+}
+#sensorToggleBtn.primary{
+  background:#0a84ff;
+  color:#fff;
+}
+#sensorToggleBtn.dangerBtn{
+  background:rgba(255,69,58,.18);
+  border:1px solid rgba(255,69,58,.55);
+  color:#fff;
+}
+#sensorToggleBtn.dangerBtn::before{
+  content:"■ ";
+  font-size:.75em;
+}
