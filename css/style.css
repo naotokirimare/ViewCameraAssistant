@@ -68,3 +68,20 @@
     grid-template-columns:1fr;
   }
 }
+
+
+/* α34 Measurement fixes */
+#sensorToggleBtn{
+  margin-top:16px;
+}
+.measureActions{
+  grid-template-columns:1fr 1fr;
+}
+@media (max-width:760px){
+  .measureActions{
+    grid-template-columns:1fr 1fr;
+  }
+}
+.shootMeasureActions .miniBtn{
+  min-height:40px;
+}

@@ -1,10 +1,17 @@
 function updateMeasureStatus(){
-  const targetLabel = $("measureTarget") ? $("measureTarget").selectedOptions[0].textContent.replace("に反映","") : "Front";
+  const targetSelect = $("measureTarget");
+  const targetLabel = targetSelect ? targetSelect.selectedOptions[0].textContent.replace("に反映","") : "Front";
   const active = state.sensor.active ? "測定中" : "停止中";
   const live = state.sensor.liveApply ? "リアルタイムON" : "リアルタイムOFF";
+
   if($("shootMeasureStatus")) $("shootMeasureStatus").textContent = `測定: ${active} / ${live} / ${targetLabel}`;
   if($("shootLiveToggle")) $("shootLiveToggle").textContent = state.sensor.liveApply ? "リアルタイムON" : "リアルタイムOFF";
   if($("liveApply")) $("liveApply").checked = state.sensor.liveApply;
+  if($("sensorToggleBtn")){
+    $("sensorToggleBtn").textContent = state.sensor.active ? "測定停止" : "測定開始";
+    $("sensorToggleBtn").classList.toggle("dangerBtn", state.sensor.active);
+    $("sensorToggleBtn").classList.toggle("primary", !state.sensor.active);
+  }
 }
 
 function onDeviceOrientation(e){
@@ -13,8 +20,8 @@ function onDeviceOrientation(e){
   state.sensor.tilt = clamp(rawTilt - state.sensor.zeroTilt, -90, 90);
   state.sensor.swing = clamp(rawSwing - state.sensor.zeroSwing, -90, 90);
 
-  $("measTilt").textContent = state.sensor.tilt.toFixed(1) + "°";
-  $("measSwing").textContent = state.sensor.swing.toFixed(1) + "°";
+  if($("measTilt")) $("measTilt").textContent = state.sensor.tilt.toFixed(1) + "°";
+  if($("measSwing")) $("measSwing").textContent = state.sensor.swing.toFixed(1) + "°";
 
   if(state.sensor.liveApply) applyMeasurementToModel(false);
   updateMeasureStatus();
@@ -26,7 +33,7 @@ async function startSensor(){
        typeof DeviceOrientationEvent.requestPermission === "function"){
       const res = await DeviceOrientationEvent.requestPermission();
       if(res !== "granted"){
-        $("sensorStatus").innerHTML = "センサー許可が拒否されました。Safariの設定を確認してください。";
+        if($("sensorStatus")) $("sensorStatus").innerHTML = "センサー許可が拒否されました。Safariの設定を確認してください。";
         state.sensor.active=false;
         updateMeasureStatus();
         return;
@@ -35,10 +42,10 @@ async function startSensor(){
     window.removeEventListener("deviceorientation", onDeviceOrientation);
     window.addEventListener("deviceorientation", onDeviceOrientation, true);
     state.sensor.active=true;
-    $("sensorStatus").innerHTML="測定中。Tilt / Swingを読み取っています。";
+    if($("sensorStatus")) $("sensorStatus").innerHTML="測定中。Tilt / Swingを読み取っています。";
     updateMeasureStatus();
   }catch(err){
-    $("sensorStatus").innerHTML="センサー開始に失敗しました: " + err.message;
+    if($("sensorStatus")) $("sensorStatus").innerHTML="センサー開始に失敗しました: " + err.message;
     state.sensor.active=false;
     updateMeasureStatus();
   }
@@ -49,30 +56,37 @@ function stopSensor(){
   state.sensor.active=false;
   state.sensor.liveApply=false;
   if($("liveApply")) $("liveApply").checked=false;
-  $("sensorStatus").innerHTML="測定を停止しました。";
+  if($("sensorStatus")) $("sensorStatus").innerHTML="測定を停止しました。";
   updateMeasureStatus();
+}
+
+function toggleSensor(){
+  if(state.sensor.active) stopSensor();
+  else startSensor();
 }
 
 function zeroSensor(){
   state.sensor.zeroTilt += state.sensor.tilt;
   state.sensor.zeroSwing += state.sensor.swing;
-  state.sensor.tilt=0; state.sensor.swing=0;
-  $("measTilt").textContent="0.0°"; $("measSwing").textContent="0.0°";
-  $("sensorStatus").innerHTML="ゼロ補正しました。";
+  state.sensor.tilt=0;
+  state.sensor.swing=0;
+  if($("measTilt")) $("measTilt").textContent="0.0°";
+  if($("measSwing")) $("measSwing").textContent="0.0°";
+  if($("sensorStatus")) $("sensorStatus").innerHTML="ゼロ補正しました。";
   updateMeasureStatus();
 }
 
 function resetZeroSensor(){
   state.sensor.zeroTilt=0;
   state.sensor.zeroSwing=0;
-  $("sensorStatus").innerHTML="ゼロ補正を解除しました。";
+  if($("sensorStatus")) $("sensorStatus").innerHTML="ゼロ補正をリセットしました。";
   updateMeasureStatus();
 }
 
 function setLiveApply(on){
   state.sensor.liveApply = !!on;
   updateMeasureStatus();
-  if(state.sensor.liveApply && state.sensor.active){
+  if(state.sensor.liveApply){
     applyMeasurementToModel(false);
   }
 }
@@ -82,10 +96,12 @@ function toggleLiveApply(){
 }
 
 function applyMeasurementToModel(showMessage=true){
-  const target=$("measureTarget").value;
+  const targetSelect=$("measureTarget");
+  const target=targetSelect ? targetSelect.value : (state.sensor.target || "front");
   state.sensor.target=target;
+
   if(target==="readOnly"){
-    if(showMessage) $("sensorStatus").innerHTML="読むだけモードです。図には反映していません。";
+    if(showMessage && $("sensorStatus")) $("sensorStatus").innerHTML="読むだけモードです。図には反映していません。";
     updateMeasureStatus();
     return;
   }
@@ -111,25 +127,35 @@ function applyMeasurementToModel(showMessage=true){
   }
 
   update();
-  if(showMessage) $("sensorStatus").innerHTML="現在値を図に反映しました。";
+  if(showMessage && $("sensorStatus")) $("sensorStatus").innerHTML="現在値を図に反映しました。";
   updateMeasureStatus();
 }
 
 function setupMeasurement(){
-  $("sensorBtn").onclick=startSensor;
-  $("stopSensor").onclick=stopSensor;
-  $("zeroSensor").onclick=zeroSensor;
-  $("resetZeroSensor").onclick=resetZeroSensor;
-  $("applyMeasure").onclick=()=>applyMeasurementToModel(true);
+  if($("sensorToggleBtn")) $("sensorToggleBtn").onclick=toggleSensor;
+  if($("sensorBtn")) $("sensorBtn").onclick=startSensor;
+  if($("stopSensor")) $("stopSensor").onclick=stopSensor;
 
-  $("measureTarget").onchange=()=>{
-    state.sensor.target=$("measureTarget").value;
-    updateMeasureStatus();
+  if($("zeroSensor")) $("zeroSensor").onclick=zeroSensor;
+  if($("resetZeroSensor")) $("resetZeroSensor").onclick=resetZeroSensor;
+  if($("applyMeasure")) $("applyMeasure").onclick=()=>applyMeasurementToModel(true);
+
+  if($("measureTarget")){
+    $("measureTarget").onchange=()=>{
+      state.sensor.target=$("measureTarget").value;
+      updateMeasureStatus();
+    };
+  }
+  if($("liveApply")) $("liveApply").onchange=()=>setLiveApply($("liveApply").checked);
+
+  if($("shootApplyMeasure")) $("shootApplyMeasure").onclick=(e)=>{
+    e.preventDefault();
+    applyMeasurementToModel(true);
   };
-  $("liveApply").onchange=()=>setLiveApply($("liveApply").checked);
-
-  if($("shootApplyMeasure")) $("shootApplyMeasure").onclick=()=>applyMeasurementToModel(true);
-  if($("shootLiveToggle")) $("shootLiveToggle").onclick=toggleLiveApply;
+  if($("shootLiveToggle")) $("shootLiveToggle").onclick=(e)=>{
+    e.preventDefault();
+    toggleLiveApply();
+  };
 
   updateMeasureStatus();
 }
