@@ -103,3 +103,82 @@
     display:none;
   }
 }
+
+
+/* α42 fine controls accordion */
+.fineControls{
+  margin-top:8px;
+  display:block;
+  border:1px solid #ffffff20;
+  border-radius:14px;
+  padding:0;
+  background:#ffffff0c;
+}
+.fineControls summary{
+  list-style:none;
+  cursor:pointer;
+  padding:10px 12px;
+  font-size:13px;
+  font-weight:900;
+  color:#ddd;
+}
+.fineControls summary::-webkit-details-marker{display:none}
+.fineControls summary:after{
+  content:"▼";
+  float:right;
+  color:#aaa;
+}
+.fineControls[open] summary:after{content:"▲"}
+.fineControls select{
+  margin:0 10px 8px;
+  width:calc(100% - 20px);
+  padding:9px 10px;
+  font-size:13px;
+  border-radius:12px;
+}
+.fineCurrent{
+  margin:0 10px 8px;
+  padding:8px 10px;
+  border-radius:12px;
+  background:#00000022;
+  font-size:20px;
+  font-weight:950;
+  text-align:center;
+}
+.fineButtons{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:6px;
+  padding:0 10px 10px;
+}
+.fineButtons .miniBtn{
+  padding:8px 4px;
+  font-size:12px;
+  user-select:none;
+  -webkit-user-select:none;
+}
+@media(max-width:760px){
+  .focus.match{
+    stroke-width:3!important;
+  }
+  #shoot .read{
+    max-height:222px;
+  }
+  #shoot .stage2d, .stage2d{
+    height:calc(100svh - var(--safe-top) - var(--safe-bottom) - 104px - 236px - var(--tab-h));
+    min-height:290px;
+  }
+  #shoot .read:has(.fineControls[open]){
+    max-height:330px;
+  }
+  body:has(#fineControls[open]) #shoot .stage2d,
+  body:has(#fineControls[open]) .stage2d{
+    height:calc(100svh - var(--safe-top) - var(--safe-bottom) - 104px - 342px - var(--tab-h));
+    min-height:210px;
+  }
+}
+@media(min-width:761px){
+  .fineControls{
+    display:none;
+  }
+}
