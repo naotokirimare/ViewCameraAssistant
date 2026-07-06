@@ -253,16 +253,16 @@ function updateSavedReferenceUI(){
     if(ref.active){
       const dTilt = angle180(state.sensor.tilt - ref.tilt);
       const dSwing = angle180(state.sensor.swing - ref.swing);
-      $("referenceStatus").innerHTML = `Camera基準を保存済み。現在との差分: Tilt ${dTilt >= 0 ? "+" : ""}${dTilt.toFixed(1)}° / Swing ${dSwing >= 0 ? "+" : ""}${dSwing.toFixed(1)}°`;
+      $("referenceStatus").innerHTML = `現在値をCamera基準として保存済み。現在との差分: Tilt ${dTilt >= 0 ? "+" : ""}${dTilt.toFixed(1)}° / Swing ${dSwing >= 0 ? "+" : ""}${dSwing.toFixed(1)}°`;
     }else{
-      $("referenceStatus").innerHTML = "基準未保存。被写体に正対した状態で「Camera基準を保存」を押してください。";
+      $("referenceStatus").innerHTML = "基準未保存。被写体に正対した状態で「現在値をCamera基準として保存」を押してください。";
     }
   }
 }
 
 function saveReference(){
   state.savedReference = { active: true, tilt: state.sensor.tilt, swing: state.sensor.swing };
-  if($("sensorStatus")) $("sensorStatus").innerHTML = "現在の測定値をCamera基準として保存しました。";
+  if($("sensorStatus")) $("sensorStatus").innerHTML = "現在値をCamera基準として保存しました。";
   updateSavedReferenceUI();
   const saveRef = $("saveReference");
   if(saveRef) saveRef.addEventListener("click", saveReference);
@@ -279,7 +279,7 @@ function saveReference(){
 
 function useReferenceAsZero(){
   if(!state.savedReference || !state.savedReference.active){
-    if($("sensorStatus")) $("sensorStatus").innerHTML = "基準値が保存されていません。先に「Camera基準を保存」を押してください。";
+    if($("sensorStatus")) $("sensorStatus").innerHTML = "基準値が保存されていません。先に「現在値をCamera基準として保存」を押してください。";
     updateSavedReferenceUI();
     return;
   }
@@ -289,7 +289,7 @@ function useReferenceAsZero(){
   state.sensor.swing = 0;
   if($("measTilt")) $("measTilt").textContent = "0.0°";
   if($("measSwing")) $("measSwing").textContent = "0.0°";
-  if($("sensorStatus")) $("sensorStatus").innerHTML = "保存した基準値から計測を開始しました。";
+  if($("sensorStatus")) $("sensorStatus").innerHTML = "保存したCamera基準から計測を開始しました。";
   updateSavedReferenceUI();
   const saveRef = $("saveReference");
   if(saveRef) saveRef.addEventListener("click", saveReference);
@@ -344,6 +344,7 @@ function setupMeasurement(){
   if(apply) apply.addEventListener("click", () => applyMeasurementToModel(true));
 
   const target = $("measureTarget");
+  if(target) target.value = state.sensor.target || "readOnly";
   if(target) target.addEventListener("change", () => {
     state.sensor.target = target.value;
     updateApplyDestination();
