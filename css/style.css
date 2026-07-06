@@ -135,3 +135,7 @@
   border-radius:12px;
   padding:10px;
 }
+
+/* α57 saved reference */
+#savedReferenceBox .measureValue{font-size:24px}
+#referenceStatus{margin-top:10px}

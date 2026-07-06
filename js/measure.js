@@ -71,6 +71,17 @@ function onDeviceOrientation(e){
   if($("measSwing")) $("measSwing").textContent = state.sensor.swing.toFixed(1) + "°";
 
   if(state.sensor.liveApply) applyMeasurementToModel(false);
+  updateSavedReferenceUI();
+  const saveRef = $("saveReference");
+  if(saveRef) saveRef.addEventListener("click", saveReference);
+
+  const useRef = $("useReferenceAsZero");
+  if(useRef) useRef.addEventListener("click", useReferenceAsZero);
+
+  const clearRef = $("clearReference");
+  if(clearRef) clearRef.addEventListener("click", clearReference);
+
+  updateSavedReferenceUI();
   updateMeasureStatus();
 }
 
@@ -103,6 +114,16 @@ function stopSensor(){
   state.sensor.liveApply = false;
   if($("liveApply")) $("liveApply").checked = false;
   if($("sensorStatus")) $("sensorStatus").innerHTML = "測定を停止しました。";
+  const saveRef = $("saveReference");
+  if(saveRef) saveRef.addEventListener("click", saveReference);
+
+  const useRef = $("useReferenceAsZero");
+  if(useRef) useRef.addEventListener("click", useReferenceAsZero);
+
+  const clearRef = $("clearReference");
+  if(clearRef) clearRef.addEventListener("click", clearReference);
+
+  updateSavedReferenceUI();
   updateMeasureStatus();
 }
 
@@ -119,6 +140,16 @@ function zeroSensor(){
   if($("measTilt")) $("measTilt").textContent = "0.0°";
   if($("measSwing")) $("measSwing").textContent = "0.0°";
   if($("sensorStatus")) $("sensorStatus").innerHTML = "ゼロ補正しました。現在のカメラアングルを基準0として、Front/Rearの相対角を測れます。";
+  const saveRef = $("saveReference");
+  if(saveRef) saveRef.addEventListener("click", saveReference);
+
+  const useRef = $("useReferenceAsZero");
+  if(useRef) useRef.addEventListener("click", useReferenceAsZero);
+
+  const clearRef = $("clearReference");
+  if(clearRef) clearRef.addEventListener("click", clearReference);
+
+  updateSavedReferenceUI();
   updateMeasureStatus();
 }
 
@@ -126,6 +157,16 @@ function resetZeroSensor(){
   state.sensor.zeroTilt = 0;
   state.sensor.zeroSwing = 0;
   if($("sensorStatus")) $("sensorStatus").innerHTML = "ゼロ補正をリセットしました。";
+  const saveRef = $("saveReference");
+  if(saveRef) saveRef.addEventListener("click", saveReference);
+
+  const useRef = $("useReferenceAsZero");
+  if(useRef) useRef.addEventListener("click", useReferenceAsZero);
+
+  const clearRef = $("clearReference");
+  if(clearRef) clearRef.addEventListener("click", clearReference);
+
+  updateSavedReferenceUI();
   updateMeasureStatus();
 }
 
@@ -172,6 +213,93 @@ function applyMeasurementToModel(showMessage=true){
 
   update();
   if(showMessage && $("sensorStatus")) $("sensorStatus").innerHTML = "現在値を図に反映しました。";
+  const saveRef = $("saveReference");
+  if(saveRef) saveRef.addEventListener("click", saveReference);
+
+  const useRef = $("useReferenceAsZero");
+  if(useRef) useRef.addEventListener("click", useReferenceAsZero);
+
+  const clearRef = $("clearReference");
+  if(clearRef) clearRef.addEventListener("click", clearReference);
+
+  updateSavedReferenceUI();
+  updateMeasureStatus();
+}
+
+
+function updateSavedReferenceUI(){
+  const ref = state.savedReference || {active:false, tilt:0, swing:0};
+  if($("refTilt")) $("refTilt").textContent = ref.active ? ref.tilt.toFixed(1) + "°" : "未保存";
+  if($("refSwing")) $("refSwing").textContent = ref.active ? ref.swing.toFixed(1) + "°" : "未保存";
+  if($("referenceStatus")){
+    if(ref.active){
+      const dTilt = angle180(state.sensor.tilt - ref.tilt);
+      const dSwing = angle180(state.sensor.swing - ref.swing);
+      $("referenceStatus").innerHTML = `基準保存済み。現在との差分: Tilt ${dTilt >= 0 ? "+" : ""}${dTilt.toFixed(1)}° / Swing ${dSwing >= 0 ? "+" : ""}${dSwing.toFixed(1)}°`;
+    }else{
+      $("referenceStatus").innerHTML = "基準未保存。被写体に正対した状態で「基準保存」を押してください。";
+    }
+  }
+}
+
+function saveReference(){
+  state.savedReference = { active: true, tilt: state.sensor.tilt, swing: state.sensor.swing };
+  if($("sensorStatus")) $("sensorStatus").innerHTML = "現在の測定値を基準値として保存しました。";
+  updateSavedReferenceUI();
+  const saveRef = $("saveReference");
+  if(saveRef) saveRef.addEventListener("click", saveReference);
+
+  const useRef = $("useReferenceAsZero");
+  if(useRef) useRef.addEventListener("click", useReferenceAsZero);
+
+  const clearRef = $("clearReference");
+  if(clearRef) clearRef.addEventListener("click", clearReference);
+
+  updateSavedReferenceUI();
+  updateMeasureStatus();
+}
+
+function useReferenceAsZero(){
+  if(!state.savedReference || !state.savedReference.active){
+    if($("sensorStatus")) $("sensorStatus").innerHTML = "基準値が保存されていません。先に「基準保存」を押してください。";
+    updateSavedReferenceUI();
+    return;
+  }
+  state.sensor.zeroTilt += angle180(state.sensor.tilt - state.savedReference.tilt);
+  state.sensor.zeroSwing += angle180(state.sensor.swing - state.savedReference.swing);
+  state.sensor.tilt = 0;
+  state.sensor.swing = 0;
+  if($("measTilt")) $("measTilt").textContent = "0.0°";
+  if($("measSwing")) $("measSwing").textContent = "0.0°";
+  if($("sensorStatus")) $("sensorStatus").innerHTML = "保存した基準値をゼロとして読み出しました。";
+  updateSavedReferenceUI();
+  const saveRef = $("saveReference");
+  if(saveRef) saveRef.addEventListener("click", saveReference);
+
+  const useRef = $("useReferenceAsZero");
+  if(useRef) useRef.addEventListener("click", useReferenceAsZero);
+
+  const clearRef = $("clearReference");
+  if(clearRef) clearRef.addEventListener("click", clearReference);
+
+  updateSavedReferenceUI();
+  updateMeasureStatus();
+}
+
+function clearReference(){
+  state.savedReference = { active: false, tilt: 0, swing: 0 };
+  if($("sensorStatus")) $("sensorStatus").innerHTML = "保存した基準値をクリアしました。";
+  updateSavedReferenceUI();
+  const saveRef = $("saveReference");
+  if(saveRef) saveRef.addEventListener("click", saveReference);
+
+  const useRef = $("useReferenceAsZero");
+  if(useRef) useRef.addEventListener("click", useReferenceAsZero);
+
+  const clearRef = $("clearReference");
+  if(clearRef) clearRef.addEventListener("click", clearReference);
+
+  updateSavedReferenceUI();
   updateMeasureStatus();
 }
 
@@ -218,5 +346,15 @@ function setupMeasurement(){
     toggleLiveApply();
   });
 
+  const saveRef = $("saveReference");
+  if(saveRef) saveRef.addEventListener("click", saveReference);
+
+  const useRef = $("useReferenceAsZero");
+  if(useRef) useRef.addEventListener("click", useReferenceAsZero);
+
+  const clearRef = $("clearReference");
+  if(clearRef) clearRef.addEventListener("click", clearReference);
+
+  updateSavedReferenceUI();
   updateMeasureStatus();
 }
