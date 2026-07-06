@@ -139,3 +139,14 @@
 /* α57 saved reference */
 #savedReferenceBox .measureValue{font-size:24px}
 #referenceStatus{margin-top:10px}
+
+
+/* α58 wording/order */
+#applyDestination{
+  margin-top:6px;
+  margin-bottom:8px;
+  background:#ffffff0d;
+  border:1px solid #ffffff18;
+  border-radius:12px;
+  padding:9px 10px;
+}
