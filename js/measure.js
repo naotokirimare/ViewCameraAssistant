@@ -88,11 +88,13 @@ function rawToTiltSwing(e){
   const portraitSwing = angle180(-(alpha + gamma));
 
   if(isScreenLandscape()){
-    // Safari/iOSが横画面になった時は、縦画面時のTilt/Swingを入れ替えて
-    // ビューカメラ座標系に戻す。
+    // 背面垂直・横画面:
+    // Tiltはα63で正常だった動きを維持。
+    // Swingは、横画面時にスマホを左右に振る（方位を変える）動きで変化するよう
+    // 背面水平と同じ -alpha 系を使う。
     return {
       tilt: portraitSwing,
-      swing: portraitTilt
+      swing: angle180(-alpha)
     };
   }
 
