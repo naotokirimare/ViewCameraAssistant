@@ -1,3 +1,4 @@
+function syncChanged(force=false){ if(typeof syncBroadcast === "function") syncBroadcast(force); }
 function updateReferenceHelp(){
   const ref = $("measureReference") ? $("measureReference").value : state.sensor.reference || "vertical";
   const help = $("referenceHelp");
@@ -101,6 +102,7 @@ function onDeviceOrientation(e){
 
   updateSavedReferenceUI();
   updateMeasureStatus();
+  syncChanged();
 }
 
 async function startSensor(){
@@ -119,6 +121,7 @@ async function startSensor(){
     state.sensor.active = true;
     if($("sensorStatus")) $("sensorStatus").innerHTML = "測定中。Tilt / Swingを読み取っています。";
     updateMeasureStatus();
+    syncChanged(true);
   }catch(err){
     if($("sensorStatus")) $("sensorStatus").innerHTML = "センサー開始に失敗しました: " + err.message;
     state.sensor.active = false;
@@ -143,6 +146,7 @@ function stopSensor(){
 
   updateSavedReferenceUI();
   updateMeasureStatus();
+  syncChanged(true);
 }
 
 function toggleSensor(){
@@ -169,6 +173,7 @@ function zeroSensor(){
 
   updateSavedReferenceUI();
   updateMeasureStatus();
+  syncChanged(true);
 }
 
 function resetZeroSensor(){
@@ -192,6 +197,7 @@ function setLiveApply(on){
   state.sensor.liveApply = !!on;
   updateMeasureStatus();
   if(state.sensor.liveApply) applyMeasurementToModel(false);
+  syncChanged();
 }
 
 function toggleLiveApply(){
@@ -242,6 +248,7 @@ function applyMeasurementToModel(showMessage=true){
 
   updateSavedReferenceUI();
   updateMeasureStatus();
+  syncChanged(true);
 }
 
 
@@ -275,6 +282,7 @@ function saveReference(){
 
   updateSavedReferenceUI();
   updateMeasureStatus();
+  syncChanged(true);
 }
 
 function useReferenceAsZero(){
@@ -302,6 +310,7 @@ function useReferenceAsZero(){
 
   updateSavedReferenceUI();
   updateMeasureStatus();
+  syncChanged(true);
 }
 
 function clearReference(){
@@ -319,6 +328,7 @@ function clearReference(){
 
   updateSavedReferenceUI();
   updateMeasureStatus();
+  syncChanged(true);
 }
 
 function setupMeasurement(){
@@ -328,6 +338,7 @@ function setupMeasurement(){
       state.sensor.reference = $("measureReference").value;
       resetZeroSensor();
       updateMeasureStatus();
+      syncChanged(true);
     });
   }
 
@@ -348,6 +359,7 @@ function setupMeasurement(){
     state.sensor.target = target.value;
     updateApplyDestination();
     updateMeasureStatus();
+    syncChanged(true);
   });
 
   const live = $("liveApply");

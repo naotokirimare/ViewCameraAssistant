@@ -166,3 +166,21 @@
   border-radius:12px;
   padding:9px 10px;
 }
+
+
+/* α60 remote sync */
+#syncBox code{
+  background:#ffffff12;
+  border:1px solid #ffffff18;
+  border-radius:7px;
+  padding:2px 5px;
+  color:#fff;
+}
+#syncStatus,#syncBox .status:last-child{
+  background:#ffffff0d;
+  border:1px solid #ffffff18;
+  border-radius:12px;
+  padding:9px 10px;
+}
+.syncActions{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:760px){.syncActions{grid-template-columns:1fr}}
