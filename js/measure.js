@@ -106,6 +106,10 @@ function rawToTiltSwing(e){
 
 function onDeviceOrientation(e){
   const mapped = rawToTiltSwing(e);
+  // rawTilt/rawSwing are the absolute measurement values used for Camera基準差分.
+  // tilt/swing are the zero-corrected values used for Front/Rear measurement.
+  state.sensor.rawTilt = mapped.tilt;
+  state.sensor.rawSwing = mapped.swing;
   state.sensor.tilt = clamp(mapped.tilt - state.sensor.zeroTilt, -90, 90);
   state.sensor.swing = clamp(angle180(mapped.swing - state.sensor.zeroSwing), -90, 90);
 
@@ -175,22 +179,15 @@ function toggleSensor(){
 }
 
 function zeroSensor(){
-  state.sensor.zeroTilt += state.sensor.tilt;
-  state.sensor.zeroSwing += state.sensor.swing;
+  // ゼロ補正はFront/Rear測定用の一時基準。
+  // Camera基準とその差分表示には影響させない。
+  state.sensor.zeroTilt = state.sensor.rawTilt || 0;
+  state.sensor.zeroSwing = state.sensor.rawSwing || 0;
   state.sensor.tilt = 0;
   state.sensor.swing = 0;
   if($("measTilt")) $("measTilt").textContent = "0.0°";
   if($("measSwing")) $("measSwing").textContent = "0.0°";
-  if($("sensorStatus")) $("sensorStatus").innerHTML = "ゼロ補正しました。現在のカメラアングルを基準0として、Front/Rearの相対角を測れます。";
-  const saveRef = $("saveReference");
-  if(saveRef) saveRef.addEventListener("click", saveReference);
-
-  const useRef = $("useReferenceAsZero");
-  if(useRef) useRef.addEventListener("click", useReferenceAsZero);
-
-  const clearRef = $("clearReference");
-  if(clearRef) clearRef.addEventListener("click", clearReference);
-
+  if($("sensorStatus")) $("sensorStatus").innerHTML = "ゼロ補正しました。Front / Rear測定用の一時基準を現在値にしました。";
   updateSavedReferenceUI();
   updateMeasureStatus();
 }
@@ -198,16 +195,11 @@ function zeroSensor(){
 function resetZeroSensor(){
   state.sensor.zeroTilt = 0;
   state.sensor.zeroSwing = 0;
+  state.sensor.tilt = clamp(state.sensor.rawTilt || 0, -90, 90);
+  state.sensor.swing = clamp(angle180(state.sensor.rawSwing || 0), -90, 90);
+  if($("measTilt")) $("measTilt").textContent = state.sensor.tilt.toFixed(1) + "°";
+  if($("measSwing")) $("measSwing").textContent = state.sensor.swing.toFixed(1) + "°";
   if($("sensorStatus")) $("sensorStatus").innerHTML = "ゼロ補正をリセットしました。";
-  const saveRef = $("saveReference");
-  if(saveRef) saveRef.addEventListener("click", saveReference);
-
-  const useRef = $("useReferenceAsZero");
-  if(useRef) useRef.addEventListener("click", useReferenceAsZero);
-
-  const clearRef = $("clearReference");
-  if(clearRef) clearRef.addEventListener("click", clearReference);
-
   updateSavedReferenceUI();
   updateMeasureStatus();
 }
@@ -275,8 +267,8 @@ function updateSavedReferenceUI(){
   if($("refSwing")) $("refSwing").textContent = ref.active ? ref.swing.toFixed(1) + "°" : "未保存";
   if($("referenceStatus")){
     if(ref.active){
-      const dTilt = angle180(state.sensor.tilt - ref.tilt);
-      const dSwing = angle180(state.sensor.swing - ref.swing);
+      const dTilt = angle180((state.sensor.rawTilt || 0) - ref.tilt);
+      const dSwing = angle180((state.sensor.rawSwing || 0) - ref.swing);
       $("referenceStatus").innerHTML = `現在値をCamera基準として保存済み。現在との差分: Tilt ${dTilt >= 0 ? "+" : ""}${dTilt.toFixed(1)}° / Swing ${dSwing >= 0 ? "+" : ""}${dSwing.toFixed(1)}°`;
     }else{
       $("referenceStatus").innerHTML = "基準未保存。被写体に正対した状態で「現在値をCamera基準として保存」を押してください。";
@@ -285,18 +277,12 @@ function updateSavedReferenceUI(){
 }
 
 function saveReference(){
-  state.savedReference = { active: true, tilt: state.sensor.tilt, swing: state.sensor.swing };
+  state.savedReference = {
+    active: true,
+    tilt: state.sensor.rawTilt,
+    swing: state.sensor.rawSwing
+  };
   if($("sensorStatus")) $("sensorStatus").innerHTML = "現在値をCamera基準として保存しました。";
-  updateSavedReferenceUI();
-  const saveRef = $("saveReference");
-  if(saveRef) saveRef.addEventListener("click", saveReference);
-
-  const useRef = $("useReferenceAsZero");
-  if(useRef) useRef.addEventListener("click", useReferenceAsZero);
-
-  const clearRef = $("clearReference");
-  if(clearRef) clearRef.addEventListener("click", clearReference);
-
   updateSavedReferenceUI();
   updateMeasureStatus();
 }
@@ -307,23 +293,17 @@ function useReferenceAsZero(){
     updateSavedReferenceUI();
     return;
   }
-  state.sensor.zeroTilt += angle180(state.sensor.tilt - state.savedReference.tilt);
-  state.sensor.zeroSwing += angle180(state.sensor.swing - state.savedReference.swing);
-  state.sensor.tilt = 0;
-  state.sensor.swing = 0;
-  if($("measTilt")) $("measTilt").textContent = "0.0°";
-  if($("measSwing")) $("measSwing").textContent = "0.0°";
-  if($("sensorStatus")) $("sensorStatus").innerHTML = "保存したCamera基準から計測を開始しました。";
-  updateSavedReferenceUI();
-  const saveRef = $("saveReference");
-  if(saveRef) saveRef.addEventListener("click", saveReference);
-
-  const useRef = $("useReferenceAsZero");
-  if(useRef) useRef.addEventListener("click", useReferenceAsZero);
-
-  const clearRef = $("clearReference");
-  if(clearRef) clearRef.addEventListener("click", clearReference);
-
+  // Camera基準から計測:
+  // zeroTilt/zeroSwingへ保存基準そのものを入れる。
+  // これにより表示値は「現在のraw値 - Camera基準」になり、
+  // Camera基準差分はゼロ補正の影響を受けない。
+  state.sensor.zeroTilt = state.savedReference.tilt;
+  state.sensor.zeroSwing = state.savedReference.swing;
+  state.sensor.tilt = clamp((state.sensor.rawTilt || 0) - state.sensor.zeroTilt, -90, 90);
+  state.sensor.swing = clamp(angle180((state.sensor.rawSwing || 0) - state.sensor.zeroSwing), -90, 90);
+  if($("measTilt")) $("measTilt").textContent = state.sensor.tilt.toFixed(1) + "°";
+  if($("measSwing")) $("measSwing").textContent = state.sensor.swing.toFixed(1) + "°";
+  if($("sensorStatus")) $("sensorStatus").innerHTML = "Camera基準から計測を開始しました。";
   updateSavedReferenceUI();
   updateMeasureStatus();
 }
