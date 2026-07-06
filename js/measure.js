@@ -3,7 +3,7 @@ function updateReferenceHelp(){
   const help = $("referenceHelp");
   if(!help) return;
   if(ref === "vertical"){
-    help.innerHTML = "背面垂直: 内部で回転行列を使い、横画面時のジンバルロックを避けます。カメラアングル決定後にゼロ補正すると、Front/Rearの相対角を測れます。";
+    help.innerHTML = "背面垂直: iPhoneの画面向き（縦/横）を自動判定して補正します。カメラアングル決定後にゼロ補正すると、Front/Rearの相対角を測れます。";
   }else{
     help.innerHTML = "背面水平: スマホ背面を水平面に置いた状態を基準にします。Swingはα軸で測ります。";
   }
@@ -51,9 +51,6 @@ function angle180(v){
   return v;
 }
 
-function degToRad(v){ return v * Math.PI / 180; }
-function radToDeg(v){ return v * 180 / Math.PI; }
-
 function getScreenAngle(){
   if(screen.orientation && typeof screen.orientation.angle === "number"){
     return screen.orientation.angle;
@@ -69,75 +66,35 @@ function isScreenLandscape(){
   return a === 90 || a === 270;
 }
 
-function orientationMatrix(alpha, beta, gamma){
-  // W3C DeviceOrientation Z-X'-Y'' rotation matrix.
-  const a = degToRad(alpha || 0);
-  const b = degToRad(beta || 0);
-  const g = degToRad(gamma || 0);
-
-  const cA = Math.cos(a), sA = Math.sin(a);
-  const cB = Math.cos(b), sB = Math.sin(b);
-  const cG = Math.cos(g), sG = Math.sin(g);
-
-  return [
-    cA*cG - sA*sB*sG, -cB*sA, cA*sG + cG*sA*sB,
-    cG*sA + cA*sB*sG,  cA*cB, sA*sG - cA*cG*sB,
-    -cB*sG,             sB,    cB*cG
-  ];
-}
-
-function axisFromMatrix(m, axis){
-  // columns = transformed device axes in world coordinates
-  if(axis === "x") return {x:m[0], y:m[3], z:m[6]};
-  if(axis === "y") return {x:m[1], y:m[4], z:m[7]};
-  return {x:m[2], y:m[5], z:m[8]}; // device z/back-normal axis
-}
-
-function yawFromAxis(v){
-  // Horizontal-plane direction of a physical device axis.
-  // Uses atan2 of world X/Y components so it avoids the alpha singularity.
-  return angle180(-radToDeg(Math.atan2(v.x, v.y)));
-}
-
-function pitchFromAxis(v){
-  const h = Math.sqrt(v.x*v.x + v.y*v.y);
-  return radToDeg(Math.atan2(v.z, h));
-}
-
 function rawToTiltSwing(e){
   const beta = (typeof e.beta === "number") ? e.beta : 0;
   const gamma = (typeof e.gamma === "number") ? e.gamma : 0;
   const alpha = (typeof e.alpha === "number") ? e.alpha : 0;
 
   if(state.sensor.reference === "horizontal"){
-    // 背面水平は実機で正常だった挙動を維持。
+    // 背面水平:
+    // Tilt = beta
+    // Swing = -alpha
     return {
       tilt: beta,
       swing: angle180(-alpha)
     };
   }
 
-  const m = orientationMatrix(alpha, beta, gamma);
-
   // 背面垂直:
-  // Tiltは従来のbeta±90°補正を維持。
-  // Swingはalpha単独を使わず、端末の物理軸を回転行列から取り出して方位角を計算する。
+  // まず縦画面固定時のTilt/Swingを計算する。
   const portraitTiltBase = beta >= 0 ? 90 : -90;
   const portraitTilt = beta - portraitTiltBase;
-
-  // 縦画面固定では、従来の実機正常値に近いようスマホ長辺方向を使用。
-  const longAxis = axisFromMatrix(m, "y");
-  const shortAxis = axisFromMatrix(m, "x");
-
-  const portraitSwing = yawFromAxis(longAxis);
+  const portraitSwing = angle180(-(alpha + gamma));
 
   if(isScreenLandscape()){
-    // 横画面ではiOSのEuler角が不安定になるため、物理的な短辺/長辺軸から再計算する。
-    // Tiltはα63で正常だった「縦画面Swing相当」を、回転行列ベースで維持。
-    // Swingは、左右に振る動きが出る方位軸として短辺方向を使用。
+    // 背面垂直・横画面:
+    // Tiltはα63で正常だった動きを維持。
+    // Swingは、横画面時にスマホを左右に振る（方位を変える）動きで変化するよう
+    // 背面水平と同じ -alpha 系を使う。
     return {
       tilt: portraitSwing,
-      swing: yawFromAxis(shortAxis)
+      swing: angle180(-alpha)
     };
   }
 
