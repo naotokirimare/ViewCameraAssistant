@@ -3,11 +3,9 @@ function updateReferenceHelp(){
   const help = $("referenceHelp");
   if(!help) return;
   if(ref === "vertical"){
-    help.innerHTML = "背面垂直・縦画面: 通常の縦向き固定用。カメラアングル決定後にゼロ補正すると、Front/Rearの相対角を測れます。";
-  }else if(ref === "verticalLandscape"){
-    help.innerHTML = "背面垂直・横画面: iPhoneを横向きに固定した時用。縦画面とTilt/Swing軸を90°入れ替えて測ります。";
+    help.innerHTML = "背面垂直: iPhoneの画面向き（縦/横）を自動判定して補正します。カメラアングル決定後にゼロ補正すると、Front/Rearの相対角を測れます。";
   }else{
-    help.innerHTML = "背面水平: 従来通り、スマホ背面を水平面に置いた状態をTilt/Swing 0°にします。机上測定向けです。";
+    help.innerHTML = "背面水平: スマホ背面を水平面に置いた状態を基準にします。Swingはα軸で測ります。";
   }
 }
 
@@ -33,7 +31,7 @@ function updateMeasureStatus(){
   const targetLabel = targetSelect ? targetSelect.selectedOptions[0].textContent.replace("に反映","") : "Front";
   const active = state.sensor.active ? "測定中" : "停止中";
   const live = state.sensor.liveApply ? "リアルタイムON" : "リアルタイムOFF";
-  const ref = state.sensor.reference === "horizontal" ? "水平基準" : (state.sensor.reference === "verticalLandscape" ? "垂直横基準" : "垂直縦基準");
+  const ref = state.sensor.reference === "horizontal" ? "水平基準" : (isScreenLandscape() ? "垂直基準・横自動" : "垂直基準・縦自動");
 
   if($("shootMeasureStatus")) $("shootMeasureStatus").textContent = `測定: ${active} / ${live} / ${ref} / ${targetLabel}`;
   if($("shootLiveToggle")) $("shootLiveToggle").textContent = state.sensor.liveApply ? "リアルタイムON" : "リアルタイムOFF";
@@ -53,6 +51,21 @@ function angle180(v){
   return v;
 }
 
+function getScreenAngle(){
+  if(screen.orientation && typeof screen.orientation.angle === "number"){
+    return screen.orientation.angle;
+  }
+  if(typeof window.orientation === "number"){
+    return window.orientation;
+  }
+  return 0;
+}
+
+function isScreenLandscape(){
+  const a = Math.abs(getScreenAngle());
+  return a === 90 || a === 270;
+}
+
 function rawToTiltSwing(e){
   const beta = (typeof e.beta === "number") ? e.beta : 0;
   const gamma = (typeof e.gamma === "number") ? e.gamma : 0;
@@ -68,28 +81,24 @@ function rawToTiltSwing(e){
     };
   }
 
-  if(state.sensor.reference === "verticalLandscape"){
-    // 背面垂直・横画面:
-    // 縦画面時のTilt/Swingを計算してから、横画面用に入れ替える。
-    // 横画面では「縦画面時のTilt → Swing」「縦画面時のSwing → Tilt」。
-    const portraitTiltBase = beta >= 0 ? 90 : -90;
-    const portraitTilt = beta - portraitTiltBase;
-    const portraitSwing = angle180(-(alpha + gamma));
+  // 背面垂直:
+  // まず縦画面固定時のTilt/Swingを計算する。
+  const portraitTiltBase = beta >= 0 ? 90 : -90;
+  const portraitTilt = beta - portraitTiltBase;
+  const portraitSwing = angle180(-(alpha + gamma));
+
+  if(isScreenLandscape()){
+    // Safari/iOSが横画面になった時は、縦画面時のTilt/Swingを入れ替えて
+    // ビューカメラ座標系に戻す。
     return {
       tilt: portraitSwing,
       swing: portraitTilt
     };
   }
 
-  // 背面垂直・縦画面:
-  // Tilt = beta ±90°補正
-  // Swing = 垂直時の長辺軸回転として -(alpha + gamma)
-  const tiltBase = beta >= 0 ? 90 : -90;
-  const verticalLongAxisSwing = angle180(-(alpha + gamma));
-
   return {
-    tilt: beta - tiltBase,
-    swing: verticalLongAxisSwing
+    tilt: portraitTilt,
+    swing: portraitSwing
   };
 }
 
