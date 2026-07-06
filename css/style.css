@@ -150,3 +150,19 @@
   border-radius:12px;
   padding:9px 10px;
 }
+
+
+/* α59 magnification setting */
+#magnification[readonly]{
+  opacity:.9;
+  background:#1b1b20;
+  color:#30d158;
+  font-weight:900;
+}
+#magHelp{
+  margin-top:6px;
+  background:#ffffff0d;
+  border:1px solid #ffffff18;
+  border-radius:12px;
+  padding:9px 10px;
+}
