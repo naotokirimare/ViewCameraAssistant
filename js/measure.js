@@ -70,16 +70,14 @@ function rawToTiltSwing(e){
 
   if(state.sensor.reference === "verticalLandscape"){
     // 背面垂直・横画面:
-    // iPhoneを横向きにした固定用。
-    // 縦画面モードから見て、スマホ座標が90°回るので
-    // Tilt/Swingの入力軸を入れ替える試作。
-    const tiltRaw = angle180(-(alpha + gamma));
-    const tiltBase = tiltRaw >= 0 ? 90 : -90;
-    const swingRaw = beta;
-    const swingBase = swingRaw >= 0 ? 90 : -90;
+    // 縦画面時のTilt/Swingを計算してから、横画面用に入れ替える。
+    // 横画面では「縦画面時のTilt → Swing」「縦画面時のSwing → Tilt」。
+    const portraitTiltBase = beta >= 0 ? 90 : -90;
+    const portraitTilt = beta - portraitTiltBase;
+    const portraitSwing = angle180(-(alpha + gamma));
     return {
-      tilt: tiltRaw - tiltBase,
-      swing: swingRaw - swingBase
+      tilt: portraitSwing,
+      swing: portraitTilt
     };
   }
 
