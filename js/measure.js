@@ -225,6 +225,8 @@ function applyMeasurementToModel(showMessage=true){
     return;
   }
 
+  // 測定値を反映するときは、現在表示されている値を使う。
+  // Camera基準から相対計測中なら、Camera / 被写体面 / Front / Rear すべてが基準からの相対角として反映される。
   const tilt = state.sensor.tilt;
   const swing = state.sensor.swing;
 
@@ -293,7 +295,7 @@ function useReferenceAsZero(){
     updateSavedReferenceUI();
     return;
   }
-  // Camera基準から計測:
+  // Camera基準から相対計測:
   // zeroTilt/zeroSwingへ保存基準そのものを入れる。
   // これにより表示値は「現在のraw値 - Camera基準」になり、
   // Camera基準差分はゼロ補正の影響を受けない。
@@ -303,7 +305,7 @@ function useReferenceAsZero(){
   state.sensor.swing = clamp(angle180((state.sensor.rawSwing || 0) - state.sensor.zeroSwing), -90, 90);
   if($("measTilt")) $("measTilt").textContent = state.sensor.tilt.toFixed(1) + "°";
   if($("measSwing")) $("measSwing").textContent = state.sensor.swing.toFixed(1) + "°";
-  if($("sensorStatus")) $("sensorStatus").innerHTML = "Camera基準から計測を開始しました。";
+  if($("sensorStatus")) $("sensorStatus").innerHTML = "Camera基準から相対計測を開始しました。";
   updateSavedReferenceUI();
   updateMeasureStatus();
 }
