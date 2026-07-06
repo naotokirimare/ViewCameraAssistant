@@ -3,7 +3,9 @@ function updateReferenceHelp(){
   const help = $("referenceHelp");
   if(!help) return;
   if(ref === "vertical"){
-    help.innerHTML = "背面垂直: Tiltはbeta±90°補正、Swingは垂直時の長辺軸として-(alpha+gamma)を使います。カメラアングル決定後にゼロ補正すると、Front/Rearの相対角を測れます。";
+    help.innerHTML = "背面垂直・縦画面: 通常の縦向き固定用。カメラアングル決定後にゼロ補正すると、Front/Rearの相対角を測れます。";
+  }else if(ref === "verticalLandscape"){
+    help.innerHTML = "背面垂直・横画面: iPhoneを横向きに固定した時用。縦画面とTilt/Swing軸を90°入れ替えて測ります。";
   }else{
     help.innerHTML = "背面水平: 従来通り、スマホ背面を水平面に置いた状態をTilt/Swing 0°にします。机上測定向けです。";
   }
@@ -31,7 +33,7 @@ function updateMeasureStatus(){
   const targetLabel = targetSelect ? targetSelect.selectedOptions[0].textContent.replace("に反映","") : "Front";
   const active = state.sensor.active ? "測定中" : "停止中";
   const live = state.sensor.liveApply ? "リアルタイムON" : "リアルタイムOFF";
-  const ref = state.sensor.reference === "horizontal" ? "水平基準" : "垂直基準";
+  const ref = state.sensor.reference === "horizontal" ? "水平基準" : (state.sensor.reference === "verticalLandscape" ? "垂直横基準" : "垂直縦基準");
 
   if($("shootMeasureStatus")) $("shootMeasureStatus").textContent = `測定: ${active} / ${live} / ${ref} / ${targetLabel}`;
   if($("shootLiveToggle")) $("shootLiveToggle").textContent = state.sensor.liveApply ? "リアルタイムON" : "リアルタイムOFF";
@@ -66,11 +68,24 @@ function rawToTiltSwing(e){
     };
   }
 
-  // 背面垂直:
+  if(state.sensor.reference === "verticalLandscape"){
+    // 背面垂直・横画面:
+    // iPhoneを横向きにした固定用。
+    // 縦画面モードから見て、スマホ座標が90°回るので
+    // Tilt/Swingの入力軸を入れ替える試作。
+    const tiltRaw = angle180(-(alpha + gamma));
+    const tiltBase = tiltRaw >= 0 ? 90 : -90;
+    const swingRaw = beta;
+    const swingBase = swingRaw >= 0 ? 90 : -90;
+    return {
+      tilt: tiltRaw - tiltBase,
+      swing: swingRaw - swingBase
+    };
+  }
+
+  // 背面垂直・縦画面:
   // Tilt = beta ±90°補正
-  // Swing = スマホ長辺軸の回転。
-  // 垂直姿勢ではalpha単独では「方位軸」のままなので、
-  // gammaを合成して、垂直時の長辺軸回転として扱う。
+  // Swing = 垂直時の長辺軸回転として -(alpha + gamma)
   const tiltBase = beta >= 0 ? 90 : -90;
   const verticalLongAxisSwing = angle180(-(alpha + gamma));
 
