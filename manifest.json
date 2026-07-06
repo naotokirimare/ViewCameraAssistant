@@ -1,8 +1,7 @@
 {
   "name": "ViewCameraAssistant",
-  "short_name": "VCA",
+  "short_name": "ViewCameraAssistant",
   "start_url": "./",
-  "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
