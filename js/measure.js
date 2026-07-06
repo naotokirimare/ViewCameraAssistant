@@ -263,10 +263,18 @@ function applyMeasurementToModel(showMessage=true){
 }
 
 
+
+function currentAbsoluteMeasurement(){
+  return {
+    tilt: (typeof state.sensor.rawTilt === "number") ? state.sensor.rawTilt : (state.sensor.tilt + state.sensor.zeroTilt),
+    swing: (typeof state.sensor.rawSwing === "number") ? state.sensor.rawSwing : angle180(state.sensor.swing + state.sensor.zeroSwing)
+  };
+}
+
 function updateSavedReferenceUI(){
   const ref = state.savedReference || {active:false, tilt:0, swing:0};
-  if($("refTilt")) $("refTilt").textContent = ref.active ? ref.tilt.toFixed(1) + "°" : "未保存";
-  if($("refSwing")) $("refSwing").textContent = ref.active ? ref.swing.toFixed(1) + "°" : "未保存";
+  if($("refTilt")) $("refTilt").textContent = ref.active ? ((typeof ref.displayTilt === "number" ? ref.displayTilt : ref.tilt).toFixed(1) + "°") : "未保存";
+  if($("refSwing")) $("refSwing").textContent = ref.active ? ((typeof ref.displaySwing === "number" ? ref.displaySwing : ref.swing).toFixed(1) + "°") : "未保存";
   if($("referenceStatus")){
     if(ref.active){
       const dTilt = angle180((state.sensor.rawTilt || 0) - ref.tilt);
@@ -279,10 +287,15 @@ function updateSavedReferenceUI(){
 }
 
 function saveReference(){
+  const abs = currentAbsoluteMeasurement();
   state.savedReference = {
     active: true,
-    tilt: state.sensor.rawTilt,
-    swing: state.sensor.rawSwing
+    // raw absolute values: used for true Camera基準差分 and Camera基準から相対計測
+    tilt: abs.tilt,
+    swing: abs.swing,
+    // displayed values: shown in the 基準値 card so the saved value matches what the user saw
+    displayTilt: state.sensor.tilt,
+    displaySwing: state.sensor.swing
   };
   if($("sensorStatus")) $("sensorStatus").innerHTML = "現在値をCamera基準として保存しました。";
   updateSavedReferenceUI();
@@ -301,8 +314,9 @@ function useReferenceAsZero(){
   // Camera基準差分はゼロ補正の影響を受けない。
   state.sensor.zeroTilt = state.savedReference.tilt;
   state.sensor.zeroSwing = state.savedReference.swing;
-  state.sensor.tilt = clamp((state.sensor.rawTilt || 0) - state.sensor.zeroTilt, -90, 90);
-  state.sensor.swing = clamp(angle180((state.sensor.rawSwing || 0) - state.sensor.zeroSwing), -90, 90);
+  const abs = currentAbsoluteMeasurement();
+  state.sensor.tilt = clamp(abs.tilt - state.sensor.zeroTilt, -90, 90);
+  state.sensor.swing = clamp(angle180(abs.swing - state.sensor.zeroSwing), -90, 90);
   if($("measTilt")) $("measTilt").textContent = state.sensor.tilt.toFixed(1) + "°";
   if($("measSwing")) $("measSwing").textContent = state.sensor.swing.toFixed(1) + "°";
   if($("sensorStatus")) $("sensorStatus").innerHTML = "Camera基準から相対計測を開始しました。";
