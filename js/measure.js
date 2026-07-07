@@ -89,7 +89,7 @@ function rawToTiltSwing(e){
 
   if(isScreenLandscape()){
     // 背面垂直・横画面:
-    // Tiltはα94で正常だった動きを維持。
+    // Tiltはα95で正常だった動きを維持。
     // Swingは、横画面時にスマホを左右に振る（方位を変える）動きで変化するよう
     // 背面水平と同じ -alpha 系を使う。
     return {
@@ -111,7 +111,7 @@ function rawToTiltSwing(e){
 
 
 function stabilizeTiltByStartReference(rawTilt){
-  // α94:
+  // α95:
   // Tiltだけ、測定開始時の生Tiltを内部基準として固定する。
   // iPhone beta由来の0°付近の符号/枝ゆれを、基準からの相対Tiltとして扱う。
   // 光学計算に渡す値は「現在Tilt - 開始時Tilt」なので、ピント面の物理角度は相対値として維持される。
@@ -131,42 +131,68 @@ function resetTiltReferenceLock(){
 
 
 
-function captureJumpSnapshot(reason, values){
+
+function snapshotDebugValues(mapped){
+  const d = state.sensor.debug || {};
+  const side = state.data.side || {};
+  const fd = (typeof focusDebugFor === "function") ? focusDebugFor(side) : {};
+  return {
+    t: Date.now(),
+    alpha: d.alpha, beta: d.beta, gamma: d.gamma,
+    mappedTilt: mapped ? mapped.tilt : d.mappedTilt,
+    mappedSwing: mapped ? mapped.swing : d.mappedSwing,
+    rawTilt: state.sensor.rawTilt, rawSwing: state.sensor.rawSwing,
+    displayTilt: state.sensor.tilt, displaySwing: state.sensor.swing,
+    camera: side.camera, front: side.front, rear: side.rear, product: side.product,
+    focusAngle: fd.focusAngle, focusDiff: fd.diff,
+    scheimX: fd.scheimX, scheimY: fd.scheimY, scheimState: fd.scheimState
+  };
+}
+
+function pushFlightFrame(frame){
+  if(!state.sensor.flightFrames) state.sensor.flightFrames = [];
+  state.sensor.flightFrames.push(frame);
+  if(state.sensor.flightFrames.length > 24) state.sensor.flightFrames.shift();
+}
+
+function frameLine(f, idx, reasonMark){
+  const dt = state.sensor.flightBaseTime ? ((f.t - state.sensor.flightBaseTime) / 1000).toFixed(2) : "0.00";
+  return `${reasonMark || " "} ${idx}  +${dt}s  beta=${fmtDbg(f.beta)}  mTilt=${fmtDbg(f.mappedTilt)}  raw=${fmtDbg(f.rawTilt)}  disp=${fmtDbg(f.displayTilt)}  F=${fmtDbg(f.front)}  R=${fmtDbg(f.rear)}  focus=${fmtDbg(f.focusAngle)}  Δ=${fmtDbg(f.focusDiff)}`;
+}
+
+function captureFlightRecorder(reason, current){
   const status = $("jumpCaptureStatus");
   const img = $("jumpCaptureImage");
   if(!img) return;
 
+  const frames = (state.sensor.flightFrames || []).slice(-18);
+  state.sensor.flightBaseTime = frames.length ? frames[0].t : current.t;
+
   const now = new Date();
   const lines = [
-    `ViewCameraAssistant v1α94 Jump Capture`,
+    `ViewCameraAssistant v1α95 Flight Recorder`,
     `${now.toLocaleString()}`,
     `reason: ${reason}`,
     ``,
-    `alpha: ${fmtDbg(values.alpha)}`,
-    `beta : ${fmtDbg(values.beta)}`,
-    `gamma: ${fmtDbg(values.gamma)}`,
+    `Current`,
+    `alpha: ${fmtDbg(current.alpha)}   beta: ${fmtDbg(current.beta)}   gamma: ${fmtDbg(current.gamma)}`,
+    `mapped Tilt : ${fmtDbg(current.mappedTilt)}   mapped Swing: ${fmtDbg(current.mappedSwing)}`,
+    `raw Tilt    : ${fmtDbg(current.rawTilt)}   raw Swing   : ${fmtDbg(current.rawSwing)}`,
+    `display Tilt: ${fmtDbg(current.displayTilt)}   display Swing:${fmtDbg(current.displaySwing)}`,
+    `Camera: ${fmtDbg(current.camera)}  Front: ${fmtDbg(current.front)}  Rear: ${fmtDbg(current.rear)}  Subject: ${fmtDbg(current.product)}`,
+    `focus Angle: ${fmtDbg(current.focusAngle)}  focus Δ: ${fmtDbg(current.focusDiff)}`,
+    `Scheim X: ${typeof current.scheimX === "number" ? current.scheimX.toFixed(1) : "-"}  Scheim Y: ${typeof current.scheimY === "number" ? current.scheimY.toFixed(1) : "-"}  ${current.scheimState || "-"}`,
     ``,
-    `mapped Tilt : ${fmtDbg(values.mappedTilt)}`,
-    `mapped Swing: ${fmtDbg(values.mappedSwing)}`,
-    `raw Tilt    : ${fmtDbg(values.rawTilt)}`,
-    `raw Swing   : ${fmtDbg(values.rawSwing)}`,
-    `display Tilt: ${fmtDbg(values.displayTilt)}`,
-    `display Swing:${fmtDbg(values.displaySwing)}`,
-    ``,
-    `Camera : ${fmtDbg(values.camera)}`,
-    `Front  : ${fmtDbg(values.front)}`,
-    `Rear   : ${fmtDbg(values.rear)}`,
-    `Subject: ${fmtDbg(values.product)}`,
-    ``,
-    `focus Angle: ${fmtDbg(values.focusAngle)}`,
-    `focus Δ    : ${fmtDbg(values.focusDiff)}`,
-    `Scheim X   : ${typeof values.scheimX === "number" ? values.scheimX.toFixed(1) : "-"}`,
-    `Scheim Y   : ${typeof values.scheimY === "number" ? values.scheimY.toFixed(1) : "-"}`,
-    `Scheim     : ${values.scheimState || "-"}`
+    `Frames before / at jump`
   ];
 
+  frames.forEach((f, i) => {
+    const mark = (i === frames.length - 1) ? ">" : " ";
+    lines.push(frameLine(f, i - (frames.length - 1), mark));
+  });
+
   const scale = 2;
-  const w = 720, h = 860;
+  const w = 1080, h = 1220;
   const c = document.createElement("canvas");
   c.width = w * scale;
   c.height = h * scale;
@@ -174,63 +200,41 @@ function captureJumpSnapshot(reason, values){
   ctx.scale(scale, scale);
   ctx.fillStyle = "#111114";
   ctx.fillRect(0,0,w,h);
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 26px -apple-system, BlinkMacSystemFont, sans-serif";
-  ctx.fillText("Jump Capture", 28, 48);
-  ctx.font = "18px -apple-system, BlinkMacSystemFont, sans-serif";
-  let y = 86;
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 34px -apple-system, BlinkMacSystemFont, sans-serif";
+  ctx.fillText("Jump Flight Recorder", 32, 54);
+  ctx.font = "20px -apple-system, BlinkMacSystemFont, sans-serif";
+  let y = 96;
   for(const line of lines){
-    ctx.fillStyle = line.startsWith("reason") ? "#ffcc66" : "#ffffff";
-    ctx.fillText(line, 28, y);
-    y += 28;
+    ctx.fillStyle = line.startsWith("reason") ? "#ffcc66" : (line.startsWith(">") ? "#7dd3fc" : "#ffffff");
+    ctx.fillText(line, 32, y);
+    y += 30;
+    if(y > h - 28) break;
   }
 
   img.src = c.toDataURL("image/png");
   img.style.display = "block";
-  if(status) status.textContent = "大きな変化を記録しました。画像を長押し保存、またはこの画面をスクショしてください。";
+  if(status) status.textContent = "異常な飛びを記録しました。画像を長押し保存、またはこの画面をスクショしてください。";
 }
 
 function checkAndCaptureJump(mapped){
   if(!$("jumpCaptureBox")) return;
-
-  const d = state.sensor.debug || {};
-  const side = state.data.side || {};
-  const fd = (typeof focusDebugFor === "function") ? focusDebugFor(side) : {};
-
-  const current = {
-    alpha: d.alpha,
-    beta: d.beta,
-    gamma: d.gamma,
-    mappedTilt: mapped ? mapped.tilt : d.mappedTilt,
-    mappedSwing: mapped ? mapped.swing : d.mappedSwing,
-    rawTilt: state.sensor.rawTilt,
-    rawSwing: state.sensor.rawSwing,
-    displayTilt: state.sensor.tilt,
-    displaySwing: state.sensor.swing,
-    camera: side.camera,
-    front: side.front,
-    rear: side.rear,
-    product: side.product,
-    focusAngle: fd.focusAngle,
-    focusDiff: fd.diff,
-    scheimX: fd.scheimX,
-    scheimY: fd.scheimY,
-    scheimState: fd.scheimState
-  };
+  const current = snapshotDebugValues(mapped);
+  pushFlightFrame(current);
 
   const prev = state.sensor.jumpCapturePrev;
   state.sensor.jumpCapturePrev = current;
   if(!prev || state.sensor.jumpCaptured) return;
 
+  // α95:
+  // 普通に少し動かしただけでは記録しない。
+  // 「表示・反映・ピント計算の値だけが不自然に大きく変化した時」か、
+  // 「測定値と反映値/ピント値の差が大きくなった時」だけ記録する。
   const checks = [
-    ["beta", 2.5],
-    ["mappedTilt", 2.5],
-    ["rawTilt", 2.5],
-    ["displayTilt", 2.5],
-    ["front", 2.5],
-    ["rear", 2.5],
-    ["focusAngle", 4.0],
-    ["focusDiff", 4.0]
+    ["front", 12.0],
+    ["rear", 12.0],
+    ["focusAngle", 12.0],
+    ["focusDiff", 12.0]
   ];
 
   const hits = [];
@@ -241,9 +245,21 @@ function checkAndCaptureJump(mapped){
     }
   }
 
+  if(typeof current.displayTilt === "number" && typeof current.front === "number"){
+    const gap = angle180(current.front - current.displayTilt);
+    if(Math.abs(gap) >= 8) hits.push(`front-displayTilt gap ${gap >= 0 ? "+" : ""}${gap.toFixed(1)}°`);
+  }
+  if(typeof current.displayTilt === "number" && typeof current.rear === "number"){
+    const gap = angle180(current.rear - current.displayTilt);
+    if(Math.abs(gap) >= 8) hits.push(`rear-displayTilt gap ${gap >= 0 ? "+" : ""}${gap.toFixed(1)}°`);
+  }
+  if(typeof current.focusDiff === "number" && Math.abs(current.focusDiff) >= 12){
+    hits.push(`focusDiff absolute ${current.focusDiff.toFixed(1)}°`);
+  }
+
   if(hits.length){
     state.sensor.jumpCaptured = true;
-    captureJumpSnapshot(hits.join(" / "), current);
+    captureFlightRecorder(hits.join(" / "), current);
   }
 }
 
@@ -254,12 +270,15 @@ function setupJumpCaptureButtons(){
     btn.addEventListener("click", () => {
       state.sensor.jumpCaptured = false;
       state.sensor.jumpCapturePrev = null;
+      state.sensor.flightFrames = [];
+      state.sensor.flightBaseTime = null;
       const img = $("jumpCaptureImage");
       if(img){ img.removeAttribute("src"); img.style.display = "none"; }
-      if($("jumpCaptureStatus")) $("jumpCaptureStatus").textContent = "記録をクリアしました。次の大きな変化を待っています。";
+      if($("jumpCaptureStatus")) $("jumpCaptureStatus").textContent = "記録をクリアしました。次の異常な飛びを待っています。";
     });
   }
 }
+
 
 function fmtDbg(v){
   return (typeof v === "number" && isFinite(v)) ? v.toFixed(1) + "°" : "-";
