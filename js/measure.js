@@ -89,7 +89,7 @@ function rawToTiltSwing(e){
 
   if(isScreenLandscape()){
     // 背面垂直・横画面:
-    // Tiltはα93で正常だった動きを維持。
+    // Tiltはα94で正常だった動きを維持。
     // Swingは、横画面時にスマホを左右に振る（方位を変える）動きで変化するよう
     // 背面水平と同じ -alpha 系を使う。
     return {
@@ -111,7 +111,7 @@ function rawToTiltSwing(e){
 
 
 function stabilizeTiltByStartReference(rawTilt){
-  // α93:
+  // α94:
   // Tiltだけ、測定開始時の生Tiltを内部基準として固定する。
   // iPhone beta由来の0°付近の符号/枝ゆれを、基準からの相対Tiltとして扱う。
   // 光学計算に渡す値は「現在Tilt - 開始時Tilt」なので、ピント面の物理角度は相対値として維持される。
@@ -129,6 +129,137 @@ function resetTiltReferenceLock(){
   delete state.sensor.tiltStartRaw;
 }
 
+
+
+function captureJumpSnapshot(reason, values){
+  const status = $("jumpCaptureStatus");
+  const img = $("jumpCaptureImage");
+  if(!img) return;
+
+  const now = new Date();
+  const lines = [
+    `ViewCameraAssistant v1α94 Jump Capture`,
+    `${now.toLocaleString()}`,
+    `reason: ${reason}`,
+    ``,
+    `alpha: ${fmtDbg(values.alpha)}`,
+    `beta : ${fmtDbg(values.beta)}`,
+    `gamma: ${fmtDbg(values.gamma)}`,
+    ``,
+    `mapped Tilt : ${fmtDbg(values.mappedTilt)}`,
+    `mapped Swing: ${fmtDbg(values.mappedSwing)}`,
+    `raw Tilt    : ${fmtDbg(values.rawTilt)}`,
+    `raw Swing   : ${fmtDbg(values.rawSwing)}`,
+    `display Tilt: ${fmtDbg(values.displayTilt)}`,
+    `display Swing:${fmtDbg(values.displaySwing)}`,
+    ``,
+    `Camera : ${fmtDbg(values.camera)}`,
+    `Front  : ${fmtDbg(values.front)}`,
+    `Rear   : ${fmtDbg(values.rear)}`,
+    `Subject: ${fmtDbg(values.product)}`,
+    ``,
+    `focus Angle: ${fmtDbg(values.focusAngle)}`,
+    `focus Δ    : ${fmtDbg(values.focusDiff)}`,
+    `Scheim X   : ${typeof values.scheimX === "number" ? values.scheimX.toFixed(1) : "-"}`,
+    `Scheim Y   : ${typeof values.scheimY === "number" ? values.scheimY.toFixed(1) : "-"}`,
+    `Scheim     : ${values.scheimState || "-"}`
+  ];
+
+  const scale = 2;
+  const w = 720, h = 860;
+  const c = document.createElement("canvas");
+  c.width = w * scale;
+  c.height = h * scale;
+  const ctx = c.getContext("2d");
+  ctx.scale(scale, scale);
+  ctx.fillStyle = "#111114";
+  ctx.fillRect(0,0,w,h);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 26px -apple-system, BlinkMacSystemFont, sans-serif";
+  ctx.fillText("Jump Capture", 28, 48);
+  ctx.font = "18px -apple-system, BlinkMacSystemFont, sans-serif";
+  let y = 86;
+  for(const line of lines){
+    ctx.fillStyle = line.startsWith("reason") ? "#ffcc66" : "#ffffff";
+    ctx.fillText(line, 28, y);
+    y += 28;
+  }
+
+  img.src = c.toDataURL("image/png");
+  img.style.display = "block";
+  if(status) status.textContent = "大きな変化を記録しました。画像を長押し保存、またはこの画面をスクショしてください。";
+}
+
+function checkAndCaptureJump(mapped){
+  if(!$("jumpCaptureBox")) return;
+
+  const d = state.sensor.debug || {};
+  const side = state.data.side || {};
+  const fd = (typeof focusDebugFor === "function") ? focusDebugFor(side) : {};
+
+  const current = {
+    alpha: d.alpha,
+    beta: d.beta,
+    gamma: d.gamma,
+    mappedTilt: mapped ? mapped.tilt : d.mappedTilt,
+    mappedSwing: mapped ? mapped.swing : d.mappedSwing,
+    rawTilt: state.sensor.rawTilt,
+    rawSwing: state.sensor.rawSwing,
+    displayTilt: state.sensor.tilt,
+    displaySwing: state.sensor.swing,
+    camera: side.camera,
+    front: side.front,
+    rear: side.rear,
+    product: side.product,
+    focusAngle: fd.focusAngle,
+    focusDiff: fd.diff,
+    scheimX: fd.scheimX,
+    scheimY: fd.scheimY,
+    scheimState: fd.scheimState
+  };
+
+  const prev = state.sensor.jumpCapturePrev;
+  state.sensor.jumpCapturePrev = current;
+  if(!prev || state.sensor.jumpCaptured) return;
+
+  const checks = [
+    ["beta", 2.5],
+    ["mappedTilt", 2.5],
+    ["rawTilt", 2.5],
+    ["displayTilt", 2.5],
+    ["front", 2.5],
+    ["rear", 2.5],
+    ["focusAngle", 4.0],
+    ["focusDiff", 4.0]
+  ];
+
+  const hits = [];
+  for(const [k, th] of checks){
+    if(typeof prev[k] === "number" && typeof current[k] === "number"){
+      const diff = angle180(current[k] - prev[k]);
+      if(Math.abs(diff) >= th) hits.push(`${k} ${diff >= 0 ? "+" : ""}${diff.toFixed(1)}°`);
+    }
+  }
+
+  if(hits.length){
+    state.sensor.jumpCaptured = true;
+    captureJumpSnapshot(hits.join(" / "), current);
+  }
+}
+
+function setupJumpCaptureButtons(){
+  const btn = $("clearJumpCapture");
+  if(btn && !btn.dataset.bound){
+    btn.dataset.bound = "1";
+    btn.addEventListener("click", () => {
+      state.sensor.jumpCaptured = false;
+      state.sensor.jumpCapturePrev = null;
+      const img = $("jumpCaptureImage");
+      if(img){ img.removeAttribute("src"); img.style.display = "none"; }
+      if($("jumpCaptureStatus")) $("jumpCaptureStatus").textContent = "記録をクリアしました。次の大きな変化を待っています。";
+    });
+  }
+}
 
 function fmtDbg(v){
   return (typeof v === "number" && isFinite(v)) ? v.toFixed(1) + "°" : "-";
@@ -210,6 +341,7 @@ function onDeviceOrientation(e){
   if($("measSwing")) $("measSwing").textContent = state.sensor.swing.toFixed(1) + "°";
 
   updateMeasureDebug(mapped);
+  checkAndCaptureJump(mapped);
 
   if(state.sensor.liveApply) applyMeasurementToModel(false);
   updateSavedReferenceUI();
@@ -484,6 +616,7 @@ function clearReference(){
 }
 
 function setupMeasurement(){
+  setupJumpCaptureButtons();
   setupSensorResumeGuard();
   if($("measureReference")){
     $("measureReference").value = state.sensor.reference || "vertical";
