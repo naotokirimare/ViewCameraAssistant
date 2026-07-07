@@ -80,22 +80,43 @@ function opticsDistances(){
 }
 
 function focusAngleFor(s){
-  // α88: 旧式 camera + front*1.15 + rear*.75 を廃止。
-  // レンズ面・センサー面の交線（Scheimpflug line）と、蛇腹長から出る被写体側距離 u を使う。
-  // local座標: レンズ中心=(0,0)、センサー中心=(v,0)、ピント基準点=(-u,0)。
-  // その基準点とScheimpflug交点を結ぶ線をピント面として表示する。
-  const d=opticsDistances();
-  const lensAngle=s.camera+s.front;
-  const sensorAngle=s.camera+s.rear;
-  const lensP={x:0,y:0}, sensorP={x:d.v,y:0}, objectP={x:-d.u,y:0};
-  const lensD=dirFromPlaneAngle(lensAngle), sensorD=dirFromPlaneAngle(sensorAngle);
-  const sch=lineIntersection(lensP,lensD,sensorP,sensorD);
-  if(!sch){
-    // レンズ面とセンサー面が平行なら通常撮影。ピント面もカメラ角に戻す。
-    return normDeg(s.camera);
+  const d = opticsDistances();
+  const lensAngle = s.camera + s.front;
+  const sensorAngle = s.camera + s.rear;
+  const rel = Math.abs(lineAngleDiff180(lensAngle, sensorAngle));
+
+  const cameraBranch = equivalentPlaneAngleNear(s.camera, s.product);
+
+  if(rel < 0.05){
+    return cameraBranch;
   }
-  const rawFocus = angleFromVertical(objectP,sch);
-  return equivalentPlaneAngleNear(rawFocus, s.product);
+
+  const lensP = {x:0,y:0};
+  const sensorP = {x:d.v,y:0};
+  const objectP = {x:-d.u,y:0};
+  const lensD = dirFromPlaneAngle(lensAngle);
+  const sensorD = dirFromPlaneAngle(sensorAngle);
+  const sch = lineIntersection(lensP,lensD,sensorP,sensorD);
+
+  if(!sch){
+    return cameraBranch;
+  }
+
+  const rawFocus = angleFromVertical(objectP, sch);
+  const focusBranch = equivalentPlaneAngleNear(rawFocus, s.product);
+
+  // α89: レンズ面とセンサー面がほぼ平行な0°付近では、
+  // Scheimpflug交点が無限遠側へ移動し、atan2の枝が切り替わる。
+  // その近傍だけカメラ面側から従来解へ連続的に接続する。
+  const blendStart = 0.35;
+  const blendEnd = 3.0;
+  if(rel < blendEnd){
+    const t = clamp((rel - blendStart) / (blendEnd - blendStart), 0, 1);
+    const blended = cameraBranch + lineAngleDiff180(focusBranch, cameraBranch) * t;
+    return equivalentPlaneAngleNear(blended, s.product);
+  }
+
+  return focusBranch;
 }
 
 function requiredFrontForProduct(s){

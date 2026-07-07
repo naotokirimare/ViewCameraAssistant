@@ -89,7 +89,7 @@ function rawToTiltSwing(e){
 
   if(isScreenLandscape()){
     // 背面垂直・横画面:
-    // Tiltはα88で正常だった動きを維持。
+    // Tiltはα89で正常だった動きを維持。
     // Swingは、横画面時にスマホを左右に振る（方位を変える）動きで変化するよう
     // 背面水平と同じ -alpha 系を使う。
     return {
@@ -106,8 +106,8 @@ function rawToTiltSwing(e){
 
 
 function guardZeroSpike(axis, rawValue){
-  // α88:
-  // α87の「直前角度に近い枝を選ぶ」方式は0°付近の飛び幅を大きくしたため廃止。
+  // α89:
+  // α89の「直前角度に近い枝を選ぶ」方式は0°付近の飛び幅を大きくしたため廃止。
   // ここでは枝を選び直さず、0°付近で発生する明らかな一瞬のスパイクだけを拒否する。
   // 光学計算の基準やゼロ補正は変更しない。
   const key = axis + "ZeroGuard";
