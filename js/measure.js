@@ -89,7 +89,7 @@ function rawToTiltSwing(e){
 
   if(isScreenLandscape()){
     // 背面垂直・横画面:
-    // Tiltはα89で正常だった動きを維持。
+    // Tiltはα90で正常だった動きを維持。
     // Swingは、横画面時にスマホを左右に振る（方位を変える）動きで変化するよう
     // 背面水平と同じ -alpha 系を使う。
     return {
@@ -105,48 +105,40 @@ function rawToTiltSwing(e){
 }
 
 
-function guardZeroSpike(axis, rawValue){
-  // α89:
-  // α89の「直前角度に近い枝を選ぶ」方式は0°付近の飛び幅を大きくしたため廃止。
-  // ここでは枝を選び直さず、0°付近で発生する明らかな一瞬のスパイクだけを拒否する。
-  // 光学計算の基準やゼロ補正は変更しない。
-  const key = axis + "ZeroGuard";
-  const prev = state.sensor[key];
 
-  if(typeof prev !== "number"){
-    state.sensor[key] = rawValue;
-    return rawValue;
+
+
+
+
+function stabilizeTiltByStartReference(rawTilt){
+  // α90:
+  // Tiltだけ、測定開始時の生Tiltを内部基準として固定する。
+  // iPhone beta由来の0°付近の符号/枝ゆれを、基準からの相対Tiltとして扱う。
+  // 光学計算に渡す値は「現在Tilt - 開始時Tilt」なので、ピント面の物理角度は相対値として維持される。
+  if(typeof state.sensor.tiltStartRaw !== "number"){
+    state.sensor.tiltStartRaw = rawTilt;
+    return rawTilt;
   }
 
-  const diff = angle180(rawValue - prev);
-  const prevNearZero = Math.abs(prev) < 5;
-  const rawFarFromZero = Math.abs(rawValue) > 12;
-
-  if(prevNearZero && rawFarFromZero && Math.abs(diff) > 10){
-    // 一瞬だけ別枝に飛んだ値として扱い、前回値を維持する。
-    return prev;
-  }
-
-  state.sensor[key] = rawValue;
-  return rawValue;
+  const rel = angle180(rawTilt - state.sensor.tiltStartRaw);
+  return state.sensor.tiltStartRaw + rel;
 }
 
-function resetZeroSpikeGuard(){
+function resetTiltReferenceLock(){
   if(!state.sensor) return;
-  delete state.sensor.rawTiltZeroGuard;
-  delete state.sensor.rawSwingZeroGuard;
+  delete state.sensor.tiltStartRaw;
 }
 
 function onDeviceOrientation(e){
   const mapped = rawToTiltSwing(e);
-  const guardedTilt = guardZeroSpike("rawTilt", mapped.tilt);
-  const guardedSwing = guardZeroSpike("rawSwing", mapped.swing);
+  const stableTilt = stabilizeTiltByStartReference(mapped.tilt);
+  const stableSwing = mapped.swing;
   // rawTilt/rawSwing are the absolute measurement values used for Camera基準差分.
   // tilt/swing are the zero-corrected values used for Front/Rear measurement.
-  state.sensor.rawTilt = guardedTilt;
-  state.sensor.rawSwing = guardedSwing;
-  state.sensor.tilt = clamp(guardedTilt - state.sensor.zeroTilt, -90, 90);
-  state.sensor.swing = clamp(angle180(guardedSwing - state.sensor.zeroSwing), -90, 90);
+  state.sensor.rawTilt = stableTilt;
+  state.sensor.rawSwing = stableSwing;
+  state.sensor.tilt = clamp(stableTilt - state.sensor.zeroTilt, -90, 90);
+  state.sensor.swing = clamp(angle180(stableSwing - state.sensor.zeroSwing), -90, 90);
 
   if($("measTilt")) $("measTilt").textContent = state.sensor.tilt.toFixed(1) + "°";
   if($("measSwing")) $("measSwing").textContent = state.sensor.swing.toFixed(1) + "°";
@@ -178,8 +170,10 @@ async function startSensor(){
       }
     }
     window.removeEventListener("deviceorientation", onDeviceOrientation, true);
-  resetZeroSpikeGuard();
-    resetZeroSpikeGuard();
+  resetTiltReferenceLock();
+  
+    
+    resetTiltReferenceLock();
     window.addEventListener("deviceorientation", onDeviceOrientation, true);
     state.sensor.active = true;
     if($("sensorStatus")) $("sensorStatus").innerHTML = "測定中。Tilt / Swingを読み取っています。";
