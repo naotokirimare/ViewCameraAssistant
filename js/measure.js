@@ -89,7 +89,7 @@ function rawToTiltSwing(e){
 
   if(isScreenLandscape()){
     // 背面垂直・横画面:
-    // Tiltはα95で正常だった動きを維持。
+    // Tiltはα96で正常だった動きを維持。
     // Swingは、横画面時にスマホを左右に振る（方位を変える）動きで変化するよう
     // 背面水平と同じ -alpha 系を使う。
     return {
@@ -111,7 +111,7 @@ function rawToTiltSwing(e){
 
 
 function stabilizeTiltByStartReference(rawTilt){
-  // α95:
+  // α96:
   // Tiltだけ、測定開始時の生Tiltを内部基準として固定する。
   // iPhone beta由来の0°付近の符号/枝ゆれを、基準からの相対Tiltとして扱う。
   // 光学計算に渡す値は「現在Tilt - 開始時Tilt」なので、ピント面の物理角度は相対値として維持される。
@@ -152,7 +152,7 @@ function snapshotDebugValues(mapped){
 function pushFlightFrame(frame){
   if(!state.sensor.flightFrames) state.sensor.flightFrames = [];
   state.sensor.flightFrames.push(frame);
-  if(state.sensor.flightFrames.length > 24) state.sensor.flightFrames.shift();
+  if(state.sensor.flightFrames.length > 36) state.sensor.flightFrames.shift();
 }
 
 function frameLine(f, idx, reasonMark){
@@ -165,12 +165,12 @@ function captureFlightRecorder(reason, current){
   const img = $("jumpCaptureImage");
   if(!img) return;
 
-  const frames = (state.sensor.flightFrames || []).slice(-18);
+  const frames = (state.sensor.flightFrames || []).slice(-30);
   state.sensor.flightBaseTime = frames.length ? frames[0].t : current.t;
 
   const now = new Date();
   const lines = [
-    `ViewCameraAssistant v1α95 Flight Recorder`,
+    `ViewCameraAssistant v1α96 Flight Recorder`,
     `${now.toLocaleString()}`,
     `reason: ${reason}`,
     ``,
@@ -226,35 +226,41 @@ function checkAndCaptureJump(mapped){
   state.sensor.jumpCapturePrev = current;
   if(!prev || state.sensor.jumpCaptured) return;
 
-  // α95:
-  // 普通に少し動かしただけでは記録しない。
-  // 「表示・反映・ピント計算の値だけが不自然に大きく変化した時」か、
-  // 「測定値と反映値/ピント値の差が大きくなった時」だけ記録する。
-  const checks = [
-    ["front", 12.0],
-    ["rear", 12.0],
-    ["focusAngle", 12.0],
-    ["focusDiff", 12.0]
-  ];
+  // α96:
+  // 実機症状に合わせて「Tilt 0°付近で1〜2°だけ飛ぶ瞬間」を狙って記録する。
+  // displayTilt が -2°〜+2°付近にいる時だけ監視。
+  // 1フレームで1°以上変化したら記録。
+  const curNearZero = typeof current.displayTilt === "number" && Math.abs(current.displayTilt) <= 2.2;
+  const prevNearZero = typeof prev.displayTilt === "number" && Math.abs(prev.displayTilt) <= 2.2;
 
   const hits = [];
-  for(const [k, th] of checks){
-    if(typeof prev[k] === "number" && typeof current[k] === "number"){
-      const diff = angle180(current[k] - prev[k]);
-      if(Math.abs(diff) >= th) hits.push(`${k} ${diff >= 0 ? "+" : ""}${diff.toFixed(1)}°`);
-    }
-  }
+  if(curNearZero || prevNearZero){
+    const checks = [
+      ["beta", 1.0],
+      ["mappedTilt", 1.0],
+      ["rawTilt", 1.0],
+      ["displayTilt", 1.0],
+      ["front", 1.0],
+      ["rear", 1.0],
+      ["focusAngle", 1.5],
+      ["focusDiff", 1.5]
+    ];
 
-  if(typeof current.displayTilt === "number" && typeof current.front === "number"){
-    const gap = angle180(current.front - current.displayTilt);
-    if(Math.abs(gap) >= 8) hits.push(`front-displayTilt gap ${gap >= 0 ? "+" : ""}${gap.toFixed(1)}°`);
-  }
-  if(typeof current.displayTilt === "number" && typeof current.rear === "number"){
-    const gap = angle180(current.rear - current.displayTilt);
-    if(Math.abs(gap) >= 8) hits.push(`rear-displayTilt gap ${gap >= 0 ? "+" : ""}${gap.toFixed(1)}°`);
-  }
-  if(typeof current.focusDiff === "number" && Math.abs(current.focusDiff) >= 12){
-    hits.push(`focusDiff absolute ${current.focusDiff.toFixed(1)}°`);
+    for(const [k, th] of checks){
+      if(typeof prev[k] === "number" && typeof current[k] === "number"){
+        const diff = angle180(current[k] - prev[k]);
+        if(Math.abs(diff) >= th) hits.push(`${k} ${diff >= 0 ? "+" : ""}${diff.toFixed(1)}°`);
+      }
+    }
+
+    if(typeof current.displayTilt === "number" && typeof current.front === "number"){
+      const gap = angle180(current.front - current.displayTilt);
+      if(Math.abs(gap) >= 2.0) hits.push(`front-displayTilt gap ${gap >= 0 ? "+" : ""}${gap.toFixed(1)}°`);
+    }
+    if(typeof current.displayTilt === "number" && typeof current.rear === "number"){
+      const gap = angle180(current.rear - current.displayTilt);
+      if(Math.abs(gap) >= 2.0) hits.push(`rear-displayTilt gap ${gap >= 0 ? "+" : ""}${gap.toFixed(1)}°`);
+    }
   }
 
   if(hits.length){
