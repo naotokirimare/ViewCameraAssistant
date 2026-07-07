@@ -105,7 +105,7 @@ function focusAngleFor(s){
   const rawFocus = angleFromVertical(objectP, sch);
   const focusBranch = equivalentPlaneAngleNear(rawFocus, s.product);
 
-  // α91: レンズ面とセンサー面がほぼ平行な0°付近では、
+  // α92: レンズ面とセンサー面がほぼ平行な0°付近では、
   // Scheimpflug交点が無限遠側へ移動し、atan2の枝が切り替わる。
   // その近傍だけカメラ面側から従来解へ連続的に接続する。
   const blendStart = 0.35;
@@ -117,6 +117,27 @@ function focusAngleFor(s){
   }
 
   return focusBranch;
+}
+
+
+function focusDebugFor(s){
+  const d = opticsDistances();
+  const lensAngle = s.camera + s.front;
+  const sensorAngle = s.camera + s.rear;
+  const lensP = {x:0,y:0};
+  const sensorP = {x:d.v,y:0};
+  const objectP = {x:-d.u,y:0};
+  const lensD = dirFromPlaneAngle(lensAngle);
+  const sensorD = dirFromPlaneAngle(sensorAngle);
+  const sch = lineIntersection(lensP,lensD,sensorP,sensorD);
+  if(!sch){
+    const a = normDeg(s.camera);
+    return {focusAngle:a, diff:angleDiff(s.product,a), scheimX:null, scheimY:null, scheimState:"parallel"};
+  }
+  const rawFocus = angleFromVertical(objectP,sch);
+  const focusAngle = (typeof equivalentPlaneAngleNear==="function") ? equivalentPlaneAngleNear(rawFocus,s.product) : rawFocus;
+  const diff = (typeof lineAngleDiff180==="function") ? lineAngleDiff180(s.product,focusAngle) : angleDiff(s.product,focusAngle);
+  return {focusAngle, rawFocus, diff, scheimX:sch.x, scheimY:sch.y, scheimState:"ok"};
 }
 
 function requiredFrontForProduct(s){

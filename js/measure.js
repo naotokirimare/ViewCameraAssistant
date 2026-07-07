@@ -89,7 +89,7 @@ function rawToTiltSwing(e){
 
   if(isScreenLandscape()){
     // 背面垂直・横画面:
-    // Tiltはα91で正常だった動きを維持。
+    // Tiltはα92で正常だった動きを維持。
     // Swingは、横画面時にスマホを左右に振る（方位を変える）動きで変化するよう
     // 背面水平と同じ -alpha 系を使う。
     return {
@@ -111,7 +111,7 @@ function rawToTiltSwing(e){
 
 
 function stabilizeTiltByStartReference(rawTilt){
-  // α91:
+  // α92:
   // Tiltだけ、測定開始時の生Tiltを内部基準として固定する。
   // iPhone beta由来の0°付近の符号/枝ゆれを、基準からの相対Tiltとして扱う。
   // 光学計算に渡す値は「現在Tilt - 開始時Tilt」なので、ピント面の物理角度は相対値として維持される。
@@ -157,10 +157,20 @@ function updateMeasureDebug(mapped){
   if($("dbgRear")) $("dbgRear").textContent = fmtDbg(side.rear);
   if($("dbgProduct")) $("dbgProduct").textContent = fmtDbg(side.product);
 
+  if(typeof focusDebugFor === "function"){
+    const fd = focusDebugFor(side);
+    if($("dbgFocusAngle")) $("dbgFocusAngle").textContent = fmtDbg(fd.focusAngle);
+    if($("dbgFocusDiff")) $("dbgFocusDiff").textContent = fmtDbg(fd.diff);
+    if($("dbgScheimX")) $("dbgScheimX").textContent = (typeof fd.scheimX === "number" && isFinite(fd.scheimX)) ? fd.scheimX.toFixed(1) : "-";
+    if($("dbgScheimY")) $("dbgScheimY").textContent = (typeof fd.scheimY === "number" && isFinite(fd.scheimY)) ? fd.scheimY.toFixed(1) : "-";
+    if($("dbgScheimState")) $("dbgScheimState").textContent = fd.scheimState || "-";
+  }
+
   if($("dbgJump")){
     const prev = state.sensor.debugPrev || {};
     const parts = [];
-    [["beta", d.beta], ["mappedTilt", mapped ? mapped.tilt : d.mappedTilt], ["rawTilt", state.sensor.rawTilt], ["displayTilt", state.sensor.tilt]].forEach(([k,v])=>{
+    const fd = (typeof focusDebugFor === "function") ? focusDebugFor(state.data.side || {}) : {};
+    [["beta", d.beta], ["mappedTilt", mapped ? mapped.tilt : d.mappedTilt], ["rawTilt", state.sensor.rawTilt], ["displayTilt", state.sensor.tilt], ["focus", fd.focusAngle], ["focusDiff", fd.diff]].forEach(([k,v])=>{
       if(typeof prev[k] === "number" && typeof v === "number"){
         const diff = angle180(v - prev[k]);
         if(Math.abs(diff) >= 1.5) parts.push(`${k} ${diff >= 0 ? "+" : ""}${diff.toFixed(1)}°`);
@@ -171,7 +181,9 @@ function updateMeasureDebug(mapped){
       beta: d.beta,
       mappedTilt: mapped ? mapped.tilt : d.mappedTilt,
       rawTilt: state.sensor.rawTilt,
-      displayTilt: state.sensor.tilt
+      displayTilt: state.sensor.tilt,
+      focus: (typeof focusDebugFor === "function") ? focusDebugFor(state.data.side || {}).focusAngle : undefined,
+      focusDiff: (typeof focusDebugFor === "function") ? focusDebugFor(state.data.side || {}).diff : undefined
     };
   }
 }
