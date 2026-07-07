@@ -1,27 +1,36 @@
 
+function getBellowsLength(){
+  return $("bellows") ? (+$("bellows").value || 0) : 0;
+}
 function getBellowsCorrection(){
-  return ($("bellowsCorrection") ? (+$("bellowsCorrection").value || 0) : 0);
+  return $("bellowsCorrection") ? (+$("bellowsCorrection").value || 0) : 0;
 }
 function getEffectiveBellows(){
-  return (+$("bellows").value || 0) + getBellowsCorrection();
+  return getBellowsLength() + getBellowsCorrection();
 }
-
 function calcMagnification(){
-  const f = +$("focal").value || 1;
-  const b = getEffectiveBellows();
-  return Math.max(0, b / f - 1);
+  const f = $("focal") ? (+$("focal").value || 1) : 1;
+  const e = getEffectiveBellows();
+  return e / f - 1;
 }
 function updateMagnificationField(){
   const mag = calcMagnification();
   if($("magnification")) $("magnification").value = mag.toFixed(2);
   if($("magHelp")){
-    const f = +$("focal").value || 0;
-    const b = +$("bellows").value || 0;
+    const f = $("focal") ? (+$("focal").value || 0) : 0;
+    const b = getBellowsLength();
     const c = getBellowsCorrection();
     const e = getEffectiveBellows();
     $("magHelp").textContent = `撮影倍率 = 実効蛇腹長 ${e}mm（蛇腹長 ${b}mm + 補正 ${c}mm） ÷ 焦点距離 ${f}mm − 1 = ${mag.toFixed(2)}×`;
   }
 }
+
+
+
+
+
+
+
 
 function getFNumber(){const c=+$('fnumCustom').value;return c>0?c:(+$('fnum').value||16)}
 function effectiveFNumber(){return getFNumber()*(1+calcMagnification())}
@@ -46,11 +55,11 @@ function opticsDistances(){
   const f=Math.max(1,+$('focal').value||180);
   const v=Math.max(f+0.001,+$('bellows').value||345); // image distance / 蛇腹長
   const u=(f*v)/(v-f); // thin lens equation: 1/f = 1/u + 1/v
-  return{f,v,u,mag:Math.max(0,v/f-1)};
+  return{f,v,u,mag:(v/f-1)};
 }
 
 function focusAngleFor(s){
-  // α78: 旧式 camera + front*1.15 + rear*.75 を廃止。
+  // α79: 旧式 camera + front*1.15 + rear*.75 を廃止。
   // レンズ面・センサー面の交線（Scheimpflug line）と、蛇腹長から出る被写体側距離 u を使う。
   // local座標: レンズ中心=(0,0)、センサー中心=(v,0)、ピント基準点=(-u,0)。
   // その基準点とScheimpflug交点を結ぶ線をピント面として表示する。
@@ -80,6 +89,7 @@ function requiredFrontForProduct(s){
 
 function guideTextFor(d){const a=Math.abs(d);if(a<2)return'OK';return(d>0?'+':'-')+a.toFixed(1)+'°'}
 function updateInfo(){
+  updateMagnificationField();
   updateMagnificationField();
   $('infoMag').textContent=calcMagnification().toFixed(2)+'×';
   $('infoF').textContent='F'+getFNumber();
