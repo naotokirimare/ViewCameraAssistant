@@ -89,7 +89,7 @@ function rawToTiltSwing(e){
 
   if(isScreenLandscape()){
     // 背面垂直・横画面:
-    // Tiltはα96で正常だった動きを維持。
+    // Tiltはα97で正常だった動きを維持。
     // Swingは、横画面時にスマホを左右に振る（方位を変える）動きで変化するよう
     // 背面水平と同じ -alpha 系を使う。
     return {
@@ -111,7 +111,7 @@ function rawToTiltSwing(e){
 
 
 function stabilizeTiltByStartReference(rawTilt){
-  // α96:
+  // α97:
   // Tiltだけ、測定開始時の生Tiltを内部基準として固定する。
   // iPhone beta由来の0°付近の符号/枝ゆれを、基準からの相対Tiltとして扱う。
   // 光学計算に渡す値は「現在Tilt - 開始時Tilt」なので、ピント面の物理角度は相対値として維持される。
@@ -151,6 +151,7 @@ function snapshotDebugValues(mapped){
 
 function pushFlightFrame(frame){
   if(!state.sensor.flightFrames) state.sensor.flightFrames = [];
+      resetNearZeroTiltAverage();
   state.sensor.flightFrames.push(frame);
   if(state.sensor.flightFrames.length > 36) state.sensor.flightFrames.shift();
 }
@@ -170,7 +171,7 @@ function captureFlightRecorder(reason, current){
 
   const now = new Date();
   const lines = [
-    `ViewCameraAssistant v1α96 Flight Recorder`,
+    `ViewCameraAssistant v1α97 Flight Recorder`,
     `${now.toLocaleString()}`,
     `reason: ${reason}`,
     ``,
@@ -178,7 +179,7 @@ function captureFlightRecorder(reason, current){
     `alpha: ${fmtDbg(current.alpha)}   beta: ${fmtDbg(current.beta)}   gamma: ${fmtDbg(current.gamma)}`,
     `mapped Tilt : ${fmtDbg(current.mappedTilt)}   mapped Swing: ${fmtDbg(current.mappedSwing)}`,
     `raw Tilt    : ${fmtDbg(current.rawTilt)}   raw Swing   : ${fmtDbg(current.rawSwing)}`,
-    `display Tilt: ${fmtDbg(current.displayTilt)}   display Swing:${fmtDbg(current.displaySwing)}`,
+    `display Tilt: ${fmtDbg(current.displayTilt)}   avg:${typeof state.sensor.tiltAvg === "number" ? state.sensor.tiltAvg.toFixed(2)+"°" : "-"}   ${state.sensor.tiltZeroJudge || "-"}`,
     `Camera: ${fmtDbg(current.camera)}  Front: ${fmtDbg(current.front)}  Rear: ${fmtDbg(current.rear)}  Subject: ${fmtDbg(current.product)}`,
     `focus Angle: ${fmtDbg(current.focusAngle)}  focus Δ: ${fmtDbg(current.focusDiff)}`,
     `Scheim X: ${typeof current.scheimX === "number" ? current.scheimX.toFixed(1) : "-"}  Scheim Y: ${typeof current.scheimY === "number" ? current.scheimY.toFixed(1) : "-"}  ${current.scheimState || "-"}`,
@@ -226,7 +227,7 @@ function checkAndCaptureJump(mapped){
   state.sensor.jumpCapturePrev = current;
   if(!prev || state.sensor.jumpCaptured) return;
 
-  // α96:
+  // α97:
   // 実機症状に合わせて「Tilt 0°付近で1〜2°だけ飛ぶ瞬間」を狙って記録する。
   // displayTilt が -2°〜+2°付近にいる時だけ監視。
   // 1フレームで1°以上変化したら記録。
@@ -286,6 +287,45 @@ function setupJumpCaptureButtons(){
 }
 
 
+
+function updateNearZeroTiltAverage(){
+  // α97:
+  // 0°付近の判定用にdisplay Tiltの短時間平均を作る。
+  // 光学計算・反映値は丸めず、実測値をそのまま使う。
+  if(!state.sensor.tiltAvgFrames) state.sensor.tiltAvgFrames = [];
+  const v = state.sensor.tilt;
+  if(typeof v !== "number" || !isFinite(v)) return null;
+
+  // 0°付近だけ平均を蓄積。離れたらリセット。
+  if(Math.abs(v) <= 2.2){
+    state.sensor.tiltAvgFrames.push({t: Date.now(), v});
+    if(state.sensor.tiltAvgFrames.length > 30) state.sensor.tiltAvgFrames.shift();
+  }else{
+    state.sensor.tiltAvgFrames = [];
+    return null;
+  }
+
+  const frames = state.sensor.tiltAvgFrames;
+  if(!frames.length) return null;
+  const avg = frames.reduce((s,f)=>s+f.v,0) / frames.length;
+  const span = frames.length;
+
+  state.sensor.tiltAvg = avg;
+  state.sensor.tiltAvgCount = span;
+  state.sensor.tiltZeroJudge = (span >= 8 && Math.abs(avg) <= 0.35) ? "0°安定" :
+                               (span >= 8 ? "平均中" : "蓄積中");
+
+  return avg;
+}
+
+function resetNearZeroTiltAverage(){
+  if(!state.sensor) return;
+  state.sensor.tiltAvgFrames = [];
+  state.sensor.tiltAvg = null;
+  state.sensor.tiltAvgCount = 0;
+  state.sensor.tiltZeroJudge = "-";
+}
+
 function fmtDbg(v){
   return (typeof v === "number" && isFinite(v)) ? v.toFixed(1) + "°" : "-";
 }
@@ -303,6 +343,8 @@ function updateMeasureDebug(mapped){
   if($("dbgZeroTilt")) $("dbgZeroTilt").textContent = fmtDbg(state.sensor.zeroTilt);
   if($("dbgZeroSwing")) $("dbgZeroSwing").textContent = fmtDbg(state.sensor.zeroSwing);
   if($("dbgTilt")) $("dbgTilt").textContent = fmtDbg(state.sensor.tilt);
+  if($("dbgTiltAvg")) $("dbgTiltAvg").textContent = (typeof state.sensor.tiltAvg === "number") ? (state.sensor.tiltAvg.toFixed(2) + "° / " + (state.sensor.tiltAvgCount || 0) + "f") : "-";
+  if($("dbgTiltZeroJudge")) $("dbgTiltZeroJudge").textContent = state.sensor.tiltZeroJudge || "-";
   if($("dbgSwing")) $("dbgSwing").textContent = fmtDbg(state.sensor.swing);
   const targetSelect = $("measureTarget");
   if($("dbgTarget")) $("dbgTarget").textContent = targetSelect ? targetSelect.value : (state.sensor.target || "-");
@@ -365,6 +407,7 @@ function onDeviceOrientation(e){
   if($("measTilt")) $("measTilt").textContent = state.sensor.tilt.toFixed(1) + "°";
   if($("measSwing")) $("measSwing").textContent = state.sensor.swing.toFixed(1) + "°";
 
+  updateNearZeroTiltAverage();
   updateMeasureDebug(mapped);
   checkAndCaptureJump(mapped);
 
@@ -442,6 +485,7 @@ async function startSensor(){
     
     resetTiltReferenceLock();
     state.sensor.debugPrev = null;
+    resetNearZeroTiltAverage();
     window.addEventListener("deviceorientation", onDeviceOrientation, true);
     state.sensor.active = true;
     if($("sensorStatus")) $("sensorStatus").innerHTML = "測定中。Tilt / Swingを読み取っています。";
