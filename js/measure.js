@@ -89,7 +89,7 @@ function rawToTiltSwing(e){
 
   if(isScreenLandscape()){
     // 背面垂直・横画面:
-    // Tiltはα97で正常だった動きを維持。
+    // Tiltはα98で正常だった動きを維持。
     // Swingは、横画面時にスマホを左右に振る（方位を変える）動きで変化するよう
     // 背面水平と同じ -alpha 系を使う。
     return {
@@ -111,7 +111,7 @@ function rawToTiltSwing(e){
 
 
 function stabilizeTiltByStartReference(rawTilt){
-  // α97:
+  // α98:
   // Tiltだけ、測定開始時の生Tiltを内部基準として固定する。
   // iPhone beta由来の0°付近の符号/枝ゆれを、基準からの相対Tiltとして扱う。
   // 光学計算に渡す値は「現在Tilt - 開始時Tilt」なので、ピント面の物理角度は相対値として維持される。
@@ -152,6 +152,7 @@ function snapshotDebugValues(mapped){
 function pushFlightFrame(frame){
   if(!state.sensor.flightFrames) state.sensor.flightFrames = [];
       resetNearZeroTiltAverage();
+    resetNearZeroTiltHysteresis();
   state.sensor.flightFrames.push(frame);
   if(state.sensor.flightFrames.length > 36) state.sensor.flightFrames.shift();
 }
@@ -171,7 +172,7 @@ function captureFlightRecorder(reason, current){
 
   const now = new Date();
   const lines = [
-    `ViewCameraAssistant v1α97 Flight Recorder`,
+    `ViewCameraAssistant v1α98 Flight Recorder`,
     `${now.toLocaleString()}`,
     `reason: ${reason}`,
     ``,
@@ -227,7 +228,7 @@ function checkAndCaptureJump(mapped){
   state.sensor.jumpCapturePrev = current;
   if(!prev || state.sensor.jumpCaptured) return;
 
-  // α97:
+  // α98:
   // 実機症状に合わせて「Tilt 0°付近で1〜2°だけ飛ぶ瞬間」を狙って記録する。
   // displayTilt が -2°〜+2°付近にいる時だけ監視。
   // 1フレームで1°以上変化したら記録。
@@ -289,7 +290,7 @@ function setupJumpCaptureButtons(){
 
 
 function updateNearZeroTiltAverage(){
-  // α97:
+  // α98:
   // 0°付近の判定用にdisplay Tiltの短時間平均を作る。
   // 光学計算・反映値は丸めず、実測値をそのまま使う。
   if(!state.sensor.tiltAvgFrames) state.sensor.tiltAvgFrames = [];
@@ -326,6 +327,56 @@ function resetNearZeroTiltAverage(){
   state.sensor.tiltZeroJudge = "-";
 }
 
+
+function updateNearZeroTiltHysteresis(){
+  // α98:
+  // 0°境界付近の+/-切り替えがパタパタするのを抑える表示用ヒステリシス。
+  // 光学計算・測定値反映は丸めず、実測値をそのまま使う。
+  const v = state.sensor.tilt;
+  if(typeof v !== "number" || !isFinite(v)){
+    state.sensor.tiltHyst = null;
+    state.sensor.tiltHystSide = "-";
+    return null;
+  }
+
+  if(Math.abs(v) > 2.2){
+    state.sensor.tiltHyst = null;
+    state.sensor.tiltHystSide = "範囲外";
+    return null;
+  }
+
+  const prevSide = state.sensor.tiltHystSide || "zero";
+  let side = prevSide;
+
+  // 切り替えしきい値。
+  // +側から-側へは -0.8°を超えたら切替
+  // -側から+側へは +0.8°を超えたら切替
+  if(prevSide === "plus"){
+    if(v <= -0.8) side = "minus";
+  }else if(prevSide === "minus"){
+    if(v >= 0.8) side = "plus";
+  }else{
+    if(v >= 0.8) side = "plus";
+    else if(v <= -0.8) side = "minus";
+    else side = "zero";
+  }
+
+  let hv = v;
+  if(side === "zero" || Math.abs(v) < 0.8){
+    hv = 0;
+  }
+
+  state.sensor.tiltHystSide = side;
+  state.sensor.tiltHyst = hv;
+  return hv;
+}
+
+function resetNearZeroTiltHysteresis(){
+  if(!state.sensor) return;
+  state.sensor.tiltHyst = null;
+  state.sensor.tiltHystSide = "-";
+}
+
 function fmtDbg(v){
   return (typeof v === "number" && isFinite(v)) ? v.toFixed(1) + "°" : "-";
 }
@@ -344,6 +395,8 @@ function updateMeasureDebug(mapped){
   if($("dbgZeroSwing")) $("dbgZeroSwing").textContent = fmtDbg(state.sensor.zeroSwing);
   if($("dbgTilt")) $("dbgTilt").textContent = fmtDbg(state.sensor.tilt);
   if($("dbgTiltAvg")) $("dbgTiltAvg").textContent = (typeof state.sensor.tiltAvg === "number") ? (state.sensor.tiltAvg.toFixed(2) + "° / " + (state.sensor.tiltAvgCount || 0) + "f") : "-";
+  if($("dbgTiltHyst")) $("dbgTiltHyst").textContent = (typeof state.sensor.tiltHyst === "number") ? state.sensor.tiltHyst.toFixed(2) + "°" : "-";
+  if($("dbgTiltHystSide")) $("dbgTiltHystSide").textContent = state.sensor.tiltHystSide || "-";
   if($("dbgTiltZeroJudge")) $("dbgTiltZeroJudge").textContent = state.sensor.tiltZeroJudge || "-";
   if($("dbgSwing")) $("dbgSwing").textContent = fmtDbg(state.sensor.swing);
   const targetSelect = $("measureTarget");
@@ -408,6 +461,7 @@ function onDeviceOrientation(e){
   if($("measSwing")) $("measSwing").textContent = state.sensor.swing.toFixed(1) + "°";
 
   updateNearZeroTiltAverage();
+  updateNearZeroTiltHysteresis();
   updateMeasureDebug(mapped);
   checkAndCaptureJump(mapped);
 
