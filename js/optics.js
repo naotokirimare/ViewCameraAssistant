@@ -52,6 +52,19 @@ function angleFromVertical(p1,p2){
   return normDeg(deg(Math.atan2(p2.y-p1.y,p2.x-p1.x))-90);
 }
 
+
+function lineAngleDiff180(a,b){
+  // Plane angles are directionless: a and a+180° represent the same physical plane.
+  let d = normDeg(a - b);
+  if(d > 90) d -= 180;
+  if(d < -90) d += 180;
+  return d;
+}
+function equivalentPlaneAngleNear(a,ref){
+  // Choose the equivalent branch of angle a that is closest to ref.
+  return normDeg(ref + lineAngleDiff180(a, ref));
+}
+
 function opticsDistances(){
   const f = Math.max(1, +$('focal').value || 180);
   const rawBellows = +$('bellows').value || 345;
@@ -67,7 +80,7 @@ function opticsDistances(){
 }
 
 function focusAngleFor(s){
-  // α84: 旧式 camera + front*1.15 + rear*.75 を廃止。
+  // α85: 旧式 camera + front*1.15 + rear*.75 を廃止。
   // レンズ面・センサー面の交線（Scheimpflug line）と、蛇腹長から出る被写体側距離 u を使う。
   // local座標: レンズ中心=(0,0)、センサー中心=(v,0)、ピント基準点=(-u,0)。
   // その基準点とScheimpflug交点を結ぶ線をピント面として表示する。
@@ -81,7 +94,8 @@ function focusAngleFor(s){
     // レンズ面とセンサー面が平行なら通常撮影。ピント面もカメラ角に戻す。
     return normDeg(s.camera);
   }
-  return angleFromVertical(objectP,sch);
+  const rawFocus = angleFromVertical(objectP,sch);
+  return equivalentPlaneAngleNear(rawFocus, s.product);
 }
 
 function requiredFrontForProduct(s){

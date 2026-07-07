@@ -89,7 +89,7 @@ function rawToTiltSwing(e){
 
   if(isScreenLandscape()){
     // 背面垂直・横画面:
-    // Tiltはα84で正常だった動きを維持。
+    // Tiltはα85で正常だった動きを維持。
     // Swingは、横画面時にスマホを左右に振る（方位を変える）動きで変化するよう
     // 背面水平と同じ -alpha 系を使う。
     return {
@@ -104,57 +104,14 @@ function rawToTiltSwing(e){
   };
 }
 
-
-function continuousAngleValue(key, rawValue){
-  // α84: real-time sensor continuity.
-  // DeviceOrientation can switch angle branches near certain poses.
-  // Keep the sensor stream continuous by choosing the nearest angle branch,
-  // and suppress only sudden branch jumps. Drag calculations are untouched.
-  const prevKey = key + "Filtered";
-  const prev = state.sensor[prevKey];
-  if(typeof prev !== "number"){
-    state.sensor[prevKey] = rawValue;
-    return rawValue;
-  }
-
-  let best = rawValue;
-  let bestDiff = best - prev;
-  [rawValue - 360, rawValue + 360, rawValue - 180, rawValue + 180].forEach(c => {
-    const d = c - prev;
-    if(Math.abs(d) < Math.abs(bestDiff)){
-      best = c;
-      bestDiff = d;
-    }
-  });
-
-  // Branch-jump guard. A real hand movement between two sensor frames should not jump this far.
-  // This is intentionally applied to the sensor stream, not to Scheimpflug calculation.
-  const maxStep = state.sensor.liveApply ? 0.45 : 1.2;
-  if(Math.abs(bestDiff) > maxStep && Math.abs(bestDiff) < 35){
-    best = prev + Math.sign(bestDiff) * maxStep;
-  }
-
-  state.sensor[prevKey] = best;
-  return best;
-}
-
-function resetSensorContinuity(){
-  if(state.sensor){
-    delete state.sensor.rawTiltFiltered;
-    delete state.sensor.rawSwingFiltered;
-  }
-}
-
 function onDeviceOrientation(e){
   const mapped = rawToTiltSwing(e);
-  const filteredTilt = continuousAngleValue("rawTilt", mapped.tilt);
-  const filteredSwing = continuousAngleValue("rawSwing", mapped.swing);
   // rawTilt/rawSwing are the absolute measurement values used for Camera基準差分.
   // tilt/swing are the zero-corrected values used for Front/Rear measurement.
-  state.sensor.rawTilt = filteredTilt;
-  state.sensor.rawSwing = filteredSwing;
-  state.sensor.tilt = clamp(filteredTilt - state.sensor.zeroTilt, -90, 90);
-  state.sensor.swing = clamp(angle180(filteredSwing - state.sensor.zeroSwing), -90, 90);
+  state.sensor.rawTilt = mapped.tilt;
+  state.sensor.rawSwing = mapped.swing;
+  state.sensor.tilt = clamp(mapped.tilt - state.sensor.zeroTilt, -90, 90);
+  state.sensor.swing = clamp(angle180(mapped.swing - state.sensor.zeroSwing), -90, 90);
 
   if($("measTilt")) $("measTilt").textContent = state.sensor.tilt.toFixed(1) + "°";
   if($("measSwing")) $("measSwing").textContent = state.sensor.swing.toFixed(1) + "°";
@@ -187,7 +144,6 @@ async function startSensor(){
     }
     window.removeEventListener("deviceorientation", onDeviceOrientation, true);
     window.addEventListener("deviceorientation", onDeviceOrientation, true);
-    resetSensorContinuity();
     state.sensor.active = true;
     if($("sensorStatus")) $("sensorStatus").innerHTML = "測定中。Tilt / Swingを読み取っています。";
     updateMeasureStatus();
@@ -200,7 +156,6 @@ async function startSensor(){
 
 function stopSensor(){
   window.removeEventListener("deviceorientation", onDeviceOrientation, true);
-  resetSensorContinuity();
   state.sensor.active = false;
   state.sensor.liveApply = false;
   if($("liveApply")) $("liveApply").checked = false;
@@ -240,7 +195,6 @@ function zeroSensor(){
 function resetZeroSensor(){
   state.sensor.zeroTilt = 0;
   state.sensor.zeroSwing = 0;
-  resetSensorContinuity();
   state.sensor.tilt = clamp(state.sensor.rawTilt || 0, -90, 90);
   state.sensor.swing = clamp(angle180(state.sensor.rawSwing || 0), -90, 90);
   if($("measTilt")) $("measTilt").textContent = state.sensor.tilt.toFixed(1) + "°";
