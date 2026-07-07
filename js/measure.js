@@ -89,7 +89,7 @@ function rawToTiltSwing(e){
 
   if(isScreenLandscape()){
     // 背面垂直・横画面:
-    // Tiltはα85で正常だった動きを維持。
+    // Tiltはα86で正常だった動きを維持。
     // Swingは、横画面時にスマホを左右に振る（方位を変える）動きで変化するよう
     // 背面水平と同じ -alpha 系を使う。
     return {
@@ -104,14 +104,57 @@ function rawToTiltSwing(e){
   };
 }
 
+
+function stabilizeSensorZeroBranch(axis, rawValue){
+  // α86:
+  // iPhone DeviceOrientation can switch branches around the raw 0° neighborhood.
+  // Keep a continuous internal sensor stream by comparing values after a virtual
+  // offset, then remove the offset before exposing the angle to display/optics.
+  // This does not change the optical angle; it only chooses the nearest equivalent
+  // sensor branch.
+  const offset = 45; // far enough from 0° branch boundary, restored before use.
+  const prevKey = axis + "StableRaw";
+  const prev = state.sensor[prevKey];
+
+  if(typeof prev !== "number"){
+    state.sensor[prevKey] = rawValue;
+    return rawValue;
+  }
+
+  const shiftedPrev = prev + offset;
+  const shiftedRaw = rawValue + offset;
+  let bestShifted = shiftedRaw;
+  let bestDiff = bestShifted - shiftedPrev;
+
+  [shiftedRaw - 360, shiftedRaw + 360, shiftedRaw - 180, shiftedRaw + 180].forEach(candidate => {
+    const d = candidate - shiftedPrev;
+    if(Math.abs(d) < Math.abs(bestDiff)){
+      bestShifted = candidate;
+      bestDiff = d;
+    }
+  });
+
+  const restored = bestShifted - offset;
+  state.sensor[prevKey] = restored;
+  return restored;
+}
+
+function resetSensorZeroBranchStabilizer(){
+  if(!state.sensor) return;
+  delete state.sensor.rawTiltStableRaw;
+  delete state.sensor.rawSwingStableRaw;
+}
+
 function onDeviceOrientation(e){
   const mapped = rawToTiltSwing(e);
+  const stableTilt = stabilizeSensorZeroBranch("rawTilt", mapped.tilt);
+  const stableSwing = stabilizeSensorZeroBranch("rawSwing", mapped.swing);
   // rawTilt/rawSwing are the absolute measurement values used for Camera基準差分.
   // tilt/swing are the zero-corrected values used for Front/Rear measurement.
-  state.sensor.rawTilt = mapped.tilt;
-  state.sensor.rawSwing = mapped.swing;
-  state.sensor.tilt = clamp(mapped.tilt - state.sensor.zeroTilt, -90, 90);
-  state.sensor.swing = clamp(angle180(mapped.swing - state.sensor.zeroSwing), -90, 90);
+  state.sensor.rawTilt = stableTilt;
+  state.sensor.rawSwing = stableSwing;
+  state.sensor.tilt = clamp(stableTilt - state.sensor.zeroTilt, -90, 90);
+  state.sensor.swing = clamp(angle180(stableSwing - state.sensor.zeroSwing), -90, 90);
 
   if($("measTilt")) $("measTilt").textContent = state.sensor.tilt.toFixed(1) + "°";
   if($("measSwing")) $("measSwing").textContent = state.sensor.swing.toFixed(1) + "°";
@@ -143,6 +186,8 @@ async function startSensor(){
       }
     }
     window.removeEventListener("deviceorientation", onDeviceOrientation, true);
+  resetSensorZeroBranchStabilizer();
+    resetSensorZeroBranchStabilizer();
     window.addEventListener("deviceorientation", onDeviceOrientation, true);
     state.sensor.active = true;
     if($("sensorStatus")) $("sensorStatus").innerHTML = "測定中。Tilt / Swingを読み取っています。";
@@ -188,6 +233,7 @@ function zeroSensor(){
   if($("measTilt")) $("measTilt").textContent = "0.0°";
   if($("measSwing")) $("measSwing").textContent = "0.0°";
   if($("sensorStatus")) $("sensorStatus").innerHTML = "ゼロ補正しました。Front / Rear測定用の一時基準を現在値にしました。";
+  resetSensorZeroBranchStabilizer();
   updateSavedReferenceUI();
   updateMeasureStatus();
 }

@@ -80,7 +80,7 @@ function opticsDistances(){
 }
 
 function focusAngleFor(s){
-  // α85: 旧式 camera + front*1.15 + rear*.75 を廃止。
+  // α86: 旧式 camera + front*1.15 + rear*.75 を廃止。
   // レンズ面・センサー面の交線（Scheimpflug line）と、蛇腹長から出る被写体側距離 u を使う。
   // local座標: レンズ中心=(0,0)、センサー中心=(v,0)、ピント基準点=(-u,0)。
   // その基準点とScheimpflug交点を結ぶ線をピント面として表示する。
