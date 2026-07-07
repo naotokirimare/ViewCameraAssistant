@@ -89,7 +89,7 @@ function rawToTiltSwing(e){
 
   if(isScreenLandscape()){
     // 背面垂直・横画面:
-    // Tiltはα90で正常だった動きを維持。
+    // Tiltはα91で正常だった動きを維持。
     // Swingは、横画面時にスマホを左右に振る（方位を変える）動きで変化するよう
     // 背面水平と同じ -alpha 系を使う。
     return {
@@ -111,7 +111,7 @@ function rawToTiltSwing(e){
 
 
 function stabilizeTiltByStartReference(rawTilt){
-  // α90:
+  // α91:
   // Tiltだけ、測定開始時の生Tiltを内部基準として固定する。
   // iPhone beta由来の0°付近の符号/枝ゆれを、基準からの相対Tiltとして扱う。
   // 光学計算に渡す値は「現在Tilt - 開始時Tilt」なので、ピント面の物理角度は相対値として維持される。
@@ -129,8 +129,62 @@ function resetTiltReferenceLock(){
   delete state.sensor.tiltStartRaw;
 }
 
+
+function fmtDbg(v){
+  return (typeof v === "number" && isFinite(v)) ? v.toFixed(1) + "°" : "-";
+}
+
+function updateMeasureDebug(mapped){
+  if(!$("measureDebugBox")) return;
+  const d = state.sensor.debug || {};
+  if($("dbgAlpha")) $("dbgAlpha").textContent = fmtDbg(d.alpha);
+  if($("dbgBeta")) $("dbgBeta").textContent = fmtDbg(d.beta);
+  if($("dbgGamma")) $("dbgGamma").textContent = fmtDbg(d.gamma);
+  if($("dbgMappedTilt")) $("dbgMappedTilt").textContent = fmtDbg(mapped ? mapped.tilt : d.mappedTilt);
+  if($("dbgMappedSwing")) $("dbgMappedSwing").textContent = fmtDbg(mapped ? mapped.swing : d.mappedSwing);
+  if($("dbgRawTilt")) $("dbgRawTilt").textContent = fmtDbg(state.sensor.rawTilt);
+  if($("dbgRawSwing")) $("dbgRawSwing").textContent = fmtDbg(state.sensor.rawSwing);
+  if($("dbgZeroTilt")) $("dbgZeroTilt").textContent = fmtDbg(state.sensor.zeroTilt);
+  if($("dbgZeroSwing")) $("dbgZeroSwing").textContent = fmtDbg(state.sensor.zeroSwing);
+  if($("dbgTilt")) $("dbgTilt").textContent = fmtDbg(state.sensor.tilt);
+  if($("dbgSwing")) $("dbgSwing").textContent = fmtDbg(state.sensor.swing);
+  const targetSelect = $("measureTarget");
+  if($("dbgTarget")) $("dbgTarget").textContent = targetSelect ? targetSelect.value : (state.sensor.target || "-");
+
+  const side = state.data.side || {};
+  if($("dbgCamera")) $("dbgCamera").textContent = fmtDbg(side.camera);
+  if($("dbgFront")) $("dbgFront").textContent = fmtDbg(side.front);
+  if($("dbgRear")) $("dbgRear").textContent = fmtDbg(side.rear);
+  if($("dbgProduct")) $("dbgProduct").textContent = fmtDbg(side.product);
+
+  if($("dbgJump")){
+    const prev = state.sensor.debugPrev || {};
+    const parts = [];
+    [["beta", d.beta], ["mappedTilt", mapped ? mapped.tilt : d.mappedTilt], ["rawTilt", state.sensor.rawTilt], ["displayTilt", state.sensor.tilt]].forEach(([k,v])=>{
+      if(typeof prev[k] === "number" && typeof v === "number"){
+        const diff = angle180(v - prev[k]);
+        if(Math.abs(diff) >= 1.5) parts.push(`${k} ${diff >= 0 ? "+" : ""}${diff.toFixed(1)}°`);
+      }
+    });
+    $("dbgJump").textContent = parts.length ? ("変化監視: " + parts.join(" / ")) : "変化監視: 大きな変化なし";
+    state.sensor.debugPrev = {
+      beta: d.beta,
+      mappedTilt: mapped ? mapped.tilt : d.mappedTilt,
+      rawTilt: state.sensor.rawTilt,
+      displayTilt: state.sensor.tilt
+    };
+  }
+}
+
 function onDeviceOrientation(e){
   const mapped = rawToTiltSwing(e);
+  state.sensor.debug = {
+    alpha: (typeof e.alpha === "number") ? e.alpha : null,
+    beta: (typeof e.beta === "number") ? e.beta : null,
+    gamma: (typeof e.gamma === "number") ? e.gamma : null,
+    mappedTilt: mapped.tilt,
+    mappedSwing: mapped.swing
+  };
   const stableTilt = stabilizeTiltByStartReference(mapped.tilt);
   const stableSwing = mapped.swing;
   // rawTilt/rawSwing are the absolute measurement values used for Camera基準差分.
@@ -142,6 +196,8 @@ function onDeviceOrientation(e){
 
   if($("measTilt")) $("measTilt").textContent = state.sensor.tilt.toFixed(1) + "°";
   if($("measSwing")) $("measSwing").textContent = state.sensor.swing.toFixed(1) + "°";
+
+  updateMeasureDebug(mapped);
 
   if(state.sensor.liveApply) applyMeasurementToModel(false);
   updateSavedReferenceUI();
