@@ -1,14 +1,25 @@
+
+function getBellowsCorrection(){
+  return ($("bellowsCorrection") ? (+$("bellowsCorrection").value || 0) : 0);
+}
+function getEffectiveBellows(){
+  return (+$("bellows").value || 0) + getBellowsCorrection();
+}
+
 function calcMagnification(){
-  const f=+$('focal').value||180,b=+$('bellows').value||345;
-  return Math.max(0,b/f-1)
+  const f = +$("focal").value || 1;
+  const b = getEffectiveBellows();
+  return Math.max(0, b / f - 1);
 }
 function updateMagnificationField(){
   const mag = calcMagnification();
-  if($('magnification')) $('magnification').value = mag.toFixed(2);
-  if($('magHelp')){
-    const f = +$('focal').value || 0;
-    const b = +$('bellows').value || 0;
-    $('magHelp').textContent = `撮影倍率 = 蛇腹長 ${b}mm ÷ 焦点距離 ${f}mm − 1 = ${mag.toFixed(2)}×`;
+  if($("magnification")) $("magnification").value = mag.toFixed(2);
+  if($("magHelp")){
+    const f = +$("focal").value || 0;
+    const b = +$("bellows").value || 0;
+    const c = getBellowsCorrection();
+    const e = getEffectiveBellows();
+    $("magHelp").textContent = `撮影倍率 = 実効蛇腹長 ${e}mm（蛇腹長 ${b}mm + 補正 ${c}mm） ÷ 焦点距離 ${f}mm − 1 = ${mag.toFixed(2)}×`;
   }
 }
 
@@ -39,7 +50,7 @@ function opticsDistances(){
 }
 
 function focusAngleFor(s){
-  // α76: 旧式 camera + front*1.15 + rear*.75 を廃止。
+  // α78: 旧式 camera + front*1.15 + rear*.75 を廃止。
   // レンズ面・センサー面の交線（Scheimpflug line）と、蛇腹長から出る被写体側距離 u を使う。
   // local座標: レンズ中心=(0,0)、センサー中心=(v,0)、ピント基準点=(-u,0)。
   // その基準点とScheimpflug交点を結ぶ線をピント面として表示する。
