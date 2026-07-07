@@ -89,7 +89,7 @@ function rawToTiltSwing(e){
 
   if(isScreenLandscape()){
     // 背面垂直・横画面:
-    // Tiltはα87で正常だった動きを維持。
+    // Tiltはα88で正常だった動きを維持。
     // Swingは、横画面時にスマホを左右に振る（方位を変える）動きで変化するよう
     // 背面水平と同じ -alpha 系を使う。
     return {
@@ -105,63 +105,48 @@ function rawToTiltSwing(e){
 }
 
 
-
-
-
-
-
-function unwrapSensorAngle(axis, rawValue){
-  // α87:
-  // Keep the physical sensor angle continuous by following the previous value.
-  // We do NOT change the optical reference or zero point.
-  // We only choose the nearest equivalent representation of the same sensor angle.
-  const prevKey = axis + "Unwrapped";
-  const prev = state.sensor[prevKey];
+function guardZeroSpike(axis, rawValue){
+  // α88:
+  // α87の「直前角度に近い枝を選ぶ」方式は0°付近の飛び幅を大きくしたため廃止。
+  // ここでは枝を選び直さず、0°付近で発生する明らかな一瞬のスパイクだけを拒否する。
+  // 光学計算の基準やゼロ補正は変更しない。
+  const key = axis + "ZeroGuard";
+  const prev = state.sensor[key];
 
   if(typeof prev !== "number"){
-    state.sensor[prevKey] = rawValue;
+    state.sensor[key] = rawValue;
     return rawValue;
   }
 
-  const candidates = [
-    rawValue,
-    rawValue + 360,
-    rawValue - 360,
-    rawValue + 180,
-    rawValue - 180
-  ];
+  const diff = angle180(rawValue - prev);
+  const prevNearZero = Math.abs(prev) < 5;
+  const rawFarFromZero = Math.abs(rawValue) > 12;
 
-  let best = candidates[0];
-  let bestDiff = best - prev;
-
-  for(const c of candidates){
-    const d = c - prev;
-    if(Math.abs(d) < Math.abs(bestDiff)){
-      best = c;
-      bestDiff = d;
-    }
+  if(prevNearZero && rawFarFromZero && Math.abs(diff) > 10){
+    // 一瞬だけ別枝に飛んだ値として扱い、前回値を維持する。
+    return prev;
   }
 
-  state.sensor[prevKey] = best;
-  return best;
+  state.sensor[key] = rawValue;
+  return rawValue;
 }
 
-function resetSensorUnwrapContinuity(){
+function resetZeroSpikeGuard(){
   if(!state.sensor) return;
-  delete state.sensor.rawTiltUnwrapped;
-  delete state.sensor.rawSwingUnwrapped;
+  delete state.sensor.rawTiltZeroGuard;
+  delete state.sensor.rawSwingZeroGuard;
 }
 
 function onDeviceOrientation(e){
   const mapped = rawToTiltSwing(e);
-  const unwrappedTilt = unwrapSensorAngle("rawTilt", mapped.tilt);
-  const unwrappedSwing = unwrapSensorAngle("rawSwing", mapped.swing);
+  const guardedTilt = guardZeroSpike("rawTilt", mapped.tilt);
+  const guardedSwing = guardZeroSpike("rawSwing", mapped.swing);
   // rawTilt/rawSwing are the absolute measurement values used for Camera基準差分.
   // tilt/swing are the zero-corrected values used for Front/Rear measurement.
-  state.sensor.rawTilt = unwrappedTilt;
-  state.sensor.rawSwing = unwrappedSwing;
-  state.sensor.tilt = clamp(unwrappedTilt - state.sensor.zeroTilt, -90, 90);
-  state.sensor.swing = clamp(angle180(unwrappedSwing - state.sensor.zeroSwing), -90, 90);
+  state.sensor.rawTilt = guardedTilt;
+  state.sensor.rawSwing = guardedSwing;
+  state.sensor.tilt = clamp(guardedTilt - state.sensor.zeroTilt, -90, 90);
+  state.sensor.swing = clamp(angle180(guardedSwing - state.sensor.zeroSwing), -90, 90);
 
   if($("measTilt")) $("measTilt").textContent = state.sensor.tilt.toFixed(1) + "°";
   if($("measSwing")) $("measSwing").textContent = state.sensor.swing.toFixed(1) + "°";
@@ -193,8 +178,8 @@ async function startSensor(){
       }
     }
     window.removeEventListener("deviceorientation", onDeviceOrientation, true);
-  resetSensorUnwrapContinuity();
-    resetSensorUnwrapContinuity();
+  resetZeroSpikeGuard();
+    resetZeroSpikeGuard();
     window.addEventListener("deviceorientation", onDeviceOrientation, true);
     state.sensor.active = true;
     if($("sensorStatus")) $("sensorStatus").innerHTML = "測定中。Tilt / Swingを読み取っています。";
@@ -240,7 +225,6 @@ function zeroSensor(){
   if($("measTilt")) $("measTilt").textContent = "0.0°";
   if($("measSwing")) $("measSwing").textContent = "0.0°";
   if($("sensorStatus")) $("sensorStatus").innerHTML = "ゼロ補正しました。Front / Rear測定用の一時基準を現在値にしました。";
-  resetSensorUnwrapContinuity();
   updateSavedReferenceUI();
   updateMeasureStatus();
 }
