@@ -89,7 +89,7 @@ function rawToTiltSwing(e){
 
   if(isScreenLandscape()){
     // 背面垂直・横画面:
-    // Tiltはα92で正常だった動きを維持。
+    // Tiltはα93で正常だった動きを維持。
     // Swingは、横画面時にスマホを左右に振る（方位を変える）動きで変化するよう
     // 背面水平と同じ -alpha 系を使う。
     return {
@@ -111,7 +111,7 @@ function rawToTiltSwing(e){
 
 
 function stabilizeTiltByStartReference(rawTilt){
-  // α92:
+  // α93:
   // Tiltだけ、測定開始時の生Tiltを内部基準として固定する。
   // iPhone beta由来の0°付近の符号/枝ゆれを、基準からの相対Tiltとして扱う。
   // 光学計算に渡す値は「現在Tilt - 開始時Tilt」なので、ピント面の物理角度は相対値として維持される。
@@ -226,6 +226,48 @@ function onDeviceOrientation(e){
   updateMeasureStatus();
 }
 
+
+function pauseSensorForResume(reason){
+  if(!state.sensor || !state.sensor.active) return;
+  window.removeEventListener("deviceorientation", onDeviceOrientation, true);
+  state.sensor.active = false;
+  state.sensor.liveApply = false;
+  if($("liveApply")) $("liveApply").checked = false;
+  const shootLive = $("shootLiveToggle");
+  if(shootLive) shootLive.textContent = "リアルタイムOFF";
+  if($("sensorStatus")) $("sensorStatus").innerHTML = reason || "Safari復帰のため測定を停止しました。測定開始を押して再開してください。";
+  updateMeasureStatus();
+}
+
+function setupSensorResumeGuard(){
+  if(window.__vcaResumeGuardBound) return;
+  window.__vcaResumeGuardBound = true;
+
+  document.addEventListener("visibilitychange", () => {
+    if(document.hidden){
+      pauseSensorForResume("Safariを離れたため測定を停止しました。戻ったら測定開始を押して再開してください。");
+    }
+  });
+
+  window.addEventListener("pagehide", () => {
+    pauseSensorForResume("Safariを離れたため測定を停止しました。戻ったら測定開始を押して再開してください。");
+  });
+
+  window.addEventListener("pageshow", () => {
+    if($("sensorStatus") && !state.sensor.active){
+      $("sensorStatus").innerHTML = "Safari復帰後は測定を再開してください。測定開始を押すとセンサー基準を取り直します。";
+      updateMeasureStatus();
+    }
+  });
+
+  window.addEventListener("focus", () => {
+    if($("sensorStatus") && !state.sensor.active){
+      $("sensorStatus").innerHTML = "測定停止中。測定開始を押してセンサー基準を取り直してください。";
+      updateMeasureStatus();
+    }
+  });
+}
+
 async function startSensor(){
   try{
     if(typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function"){
@@ -242,6 +284,7 @@ async function startSensor(){
   
     
     resetTiltReferenceLock();
+    state.sensor.debugPrev = null;
     window.addEventListener("deviceorientation", onDeviceOrientation, true);
     state.sensor.active = true;
     if($("sensorStatus")) $("sensorStatus").innerHTML = "測定中。Tilt / Swingを読み取っています。";
@@ -441,6 +484,7 @@ function clearReference(){
 }
 
 function setupMeasurement(){
+  setupSensorResumeGuard();
   if($("measureReference")){
     $("measureReference").value = state.sensor.reference || "vertical";
     $("measureReference").addEventListener("change", () => {
