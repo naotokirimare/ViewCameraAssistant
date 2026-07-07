@@ -14,7 +14,8 @@ function calcMagnification(){
   return e / f - 1;
 }
 function updateMagnificationField(){
-  const mag = calcMagnification();
+  const d = opticsDistances();
+  const mag = d.mag;
   if($("magnification")) $("magnification").value = mag.toFixed(2);
   if($("magHelp")){
     const f = $("focal") ? (+$("focal").value || 0) : 0;
@@ -52,14 +53,21 @@ function angleFromVertical(p1,p2){
 }
 
 function opticsDistances(){
-  const f=Math.max(1,+$('focal').value||180);
-  const v=Math.max(f+0.001,+$('bellows').value||345); // image distance / 蛇腹長
-  const u=(f*v)/(v-f); // thin lens equation: 1/f = 1/u + 1/v
-  return{f,v,u,mag:(v/f-1)};
+  const f = Math.max(1, +$('focal').value || 180);
+  const rawBellows = +$('bellows').value || 345;
+  const correction = getBellowsCorrection();
+  const vRaw = rawBellows + correction;
+  // image distance / 実効蛇腹長
+  // v must be slightly larger than f for the thin-lens object distance calculation.
+  // magRaw is kept from the true effective bellows so the correction is reflected exactly.
+  const v = Math.max(f + 0.001, vRaw);
+  const u = (f * v) / (v - f); // thin lens equation: 1/f = 1/u + 1/v
+  const magRaw = vRaw / f - 1;
+  return { f, v, u, mag: magRaw, rawBellows, correction, effectiveBellows: vRaw };
 }
 
 function focusAngleFor(s){
-  // α79: 旧式 camera + front*1.15 + rear*.75 を廃止。
+  // α80: 旧式 camera + front*1.15 + rear*.75 を廃止。
   // レンズ面・センサー面の交線（Scheimpflug line）と、蛇腹長から出る被写体側距離 u を使う。
   // local座標: レンズ中心=(0,0)、センサー中心=(v,0)、ピント基準点=(-u,0)。
   // その基準点とScheimpflug交点を結ぶ線をピント面として表示する。
