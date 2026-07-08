@@ -55,7 +55,7 @@ function angleFromVertical(p1,p2){
 
 
 function planeDiff(a,b){
-  // α106: 面/線の角度差。180°反転しても同じ面として扱う。
+  // α111: 面/線の角度差。180°反転しても同じ面として扱う。
   let d = normDeg(a - b);
   while(d > 90) d -= 180;
   while(d <= -90) d += 180;
@@ -108,7 +108,7 @@ function focusAngleFor(s){
   const rawFocus = angleFromVertical(objectP, sch);
   const focusBranch = planeAngleNear(rawFocus, s.product);
 
-  // α106: レンズ面とセンサー面がほぼ平行な0°付近では、
+  // α111: レンズ面とセンサー面がほぼ平行な0°付近では、
   // Scheimpflug交点が無限遠側へ移動し、atan2の枝が切り替わる。
   // その近傍だけカメラ面側から従来解へ連続的に接続する。
   const blendStart = 0.35;
