@@ -55,7 +55,7 @@ function angleFromVertical(p1,p2){
 
 
 function planeDiff(a,b){
-  // α124: 面/線の角度差。180°反転しても同じ面として扱う。
+  // α125: 面/線の角度差。180°反転しても同じ面として扱う。
   let d = normDeg(a - b);
   while(d > 90) d -= 180;
   while(d <= -90) d += 180;
@@ -89,7 +89,7 @@ function opticsDistances(){
   let u = (f * v) / (v - f);
   let note = "auto-bellows";
 
-  // α124:
+  // α125:
   // 手入力距離モードでは、センサー面→被写体面の距離を優先する。
   // 薄レンズ基準の object distance u は、おおまかに
   // センサー→被写体距離 - 像距離v として扱う。
@@ -125,7 +125,7 @@ function focusAngleFor(s){
     return cameraBranch;
   }
 
-  // α124:
+  // α125:
   // 測定値変換・iPhoneセンサー処理には一切触らず、113の描画/入力系を維持。
   // ただしピント面の判定だけを「被写体面に合うための必要Front」と比較する方式に変更。
   // 旧式の objectP={x:-u,y:0} → Scheimpflug交点 でピント角を直接作る方式は、
@@ -169,7 +169,7 @@ function planeCalculationDebugFor(s){
     ad = angleDiff(s.product, focusNear);
     sx = sch.x;
     sy = sch.y;
-    stateText = "α124-inverse-front";
+    stateText = "α125-inverse-front";
   }else{
     focusNear = normDeg(s.camera);
     pd = (typeof planeDiff === "function") ? planeDiff(s.product, focusNear) : angleDiff(s.product, focusNear);
