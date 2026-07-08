@@ -66,6 +66,49 @@ function isScreenLandscape(){
   return a === 90 || a === 270;
 }
 
+
+function rotationMatrixFromDeviceOrientation(alphaDeg,betaDeg,gammaDeg){
+  // W3C DeviceOrientation Z-X'-Y'' intrinsic rotation approximation.
+  // Returns row-major 3x3 matrix.
+  const a = rad(alphaDeg || 0);
+  const b = rad(betaDeg || 0);
+  const g = rad(gammaDeg || 0);
+  const cA = Math.cos(a), sA = Math.sin(a);
+  const cB = Math.cos(b), sB = Math.sin(b);
+  const cG = Math.cos(g), sG = Math.sin(g);
+
+  return [
+    cA*cG - sA*sB*sG, -cB*sA, cA*sG + cG*sA*sB,
+    cG*sA + cA*sB*sG,  cA*cB, sA*sG - cA*cG*sB,
+    -cB*sG,             sB,    cB*cG
+  ];
+}
+
+function matrixTiltForVertical(alpha,beta,gamma){
+  // α103 trial:
+  // Euler角を一度回転行列へ戻し、端末の画面法線/上方向の姿勢からTiltを取り出す。
+  // beta±90°の境界で直接符号が切り替わるのを避ける目的。
+  const m = rotationMatrixFromDeviceOrientation(alpha,beta,gamma);
+
+  // Device local Y axis projected in world vertical/depth plane.
+  // Around vertical phone placement, beta=90 gives 0° near target.
+  // First candidate is continuous around beta 90:
+  const yWorldZ = m[7]; // local Y axis z component, roughly sin(beta)
+  const yWorldY = m[4]; // local Y axis y component, roughly cos(alpha)*cos(beta)
+
+  // Convert to signed tilt around the vertical reference.
+  // asin(cos(beta)-like component) gives near 0 at beta≈90.
+  let tilt = deg(Math.asin(clamp(yWorldY, -1, 1)));
+
+  // Keep sign aligned with old beta±90 behavior when possible.
+  const oldTilt = beta - (beta >= 0 ? 90 : -90);
+  if(Math.sign(tilt) !== Math.sign(oldTilt) && Math.abs(tilt) > 0.05 && Math.abs(oldTilt) > 0.05){
+    tilt = -tilt;
+  }
+
+  return tilt;
+}
+
 function rawToTiltSwing(e){
   const beta = (typeof e.beta === "number") ? e.beta : 0;
   const gamma = (typeof e.gamma === "number") ? e.gamma : 0;
@@ -82,17 +125,14 @@ function rawToTiltSwing(e){
   }
 
   // 背面垂直:
-  // α102 trial:
-  // Tiltはbeta±90°直読みではなく、gammaの垂直成分から作る。
-  // これによりbetaが90°をまたぐ時の0°付近パタつきを避けられるか検証する。
-  // 旧式: const portraitTilt = beta - (beta >= 0 ? 90 : -90);
-  const portraitTilt = gamma < 0 ? gamma + 90 : gamma - 90;
+  // α103 trial: Tiltはalpha/beta/gammaを回転行列へ戻して算出する。
+  const portraitTilt = matrixTiltForVertical(alpha,beta,gamma);
   const portraitSwing = angle180(-(alpha + gamma));
-  state.sensor.tiltMethod = "gammaVertical";
+  state.sensor.tiltMethod = "rotationMatrix";
 
   if(isScreenLandscape()){
     // 背面垂直・横画面:
-    // Tiltはα102で正常だった動きを維持。
+    // Tiltはα103で正常だった動きを維持。
     // Swingは、横画面時にスマホを左右に振る（方位を変える）動きで変化するよう
     // 背面水平と同じ -alpha 系を使う。
     return {
@@ -114,7 +154,7 @@ function rawToTiltSwing(e){
 
 
 function stabilizeTiltByStartReference(rawTilt){
-  // α102:
+  // α103:
   // Tiltだけ、測定開始時の生Tiltを内部基準として固定する。
   // iPhone beta由来の0°付近の符号/枝ゆれを、基準からの相対Tiltとして扱う。
   // 光学計算に渡す値は「現在Tilt - 開始時Tilt」なので、ピント面の物理角度は相対値として維持される。
@@ -175,7 +215,7 @@ function captureFlightRecorder(reason, current){
 
   const now = new Date();
   const lines = [
-    `ViewCameraAssistant v1α102 Flight Recorder`,
+    `ViewCameraAssistant v1α103 Flight Recorder`,
     `${now.toLocaleString()}`,
     `reason: ${reason}`,
     ``,
@@ -231,7 +271,7 @@ function checkAndCaptureJump(mapped){
   state.sensor.jumpCapturePrev = current;
   if(!prev || state.sensor.jumpCaptured) return;
 
-  // α102:
+  // α103:
   // 実機症状に合わせて「Tilt 0°付近で1〜2°だけ飛ぶ瞬間」を狙って記録する。
   // displayTilt が -2°〜+2°付近にいる時だけ監視。
   // 1フレームで1°以上変化したら記録。
@@ -293,7 +333,7 @@ function setupJumpCaptureButtons(){
 
 
 function updateNearZeroTiltAverage(){
-  // α102:
+  // α103:
   // 0°付近の判定用にdisplay Tiltの短時間平均を作る。
   // 光学計算・反映値は丸めず、実測値をそのまま使う。
   if(!state.sensor.tiltAvgFrames) state.sensor.tiltAvgFrames = [];
@@ -332,7 +372,7 @@ function resetNearZeroTiltAverage(){
 
 
 function updateNearZeroTiltHysteresis(){
-  // α102:
+  // α103:
   // 0°境界付近の+/-切り替えがパタパタするのを抑える表示用ヒステリシス。
   // 光学計算・測定値反映は丸めず、実測値をそのまま使う。
   const v = state.sensor.tilt;
