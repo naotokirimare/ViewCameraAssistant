@@ -117,6 +117,7 @@ function setupLensSelectors(){
     const mm = parseFloat(String(focalSel.value).replace("mm",""));
     if(!Number.isNaN(mm)) focal.value = mm;
     ["distanceMode","subjectDistanceM"].forEach(id=>{const el=$(id);if(el)el.addEventListener("input",update);if(el)el.addEventListener("change",update);});
+  const tfm = $("thetaFormulaMode"); if(tfm) tfm.addEventListener("change", update);
   update();
   }
 
