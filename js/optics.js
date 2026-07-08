@@ -55,7 +55,7 @@ function angleFromVertical(p1,p2){
 
 
 function planeDiff(a,b){
-  // α115: 面/線の角度差。180°反転しても同じ面として扱う。
+  // α116: 面/線の角度差。180°反転しても同じ面として扱う。
   let d = normDeg(a - b);
   while(d > 90) d -= 180;
   while(d <= -90) d += 180;
@@ -89,7 +89,7 @@ function opticsDistances(){
   let u = (f * v) / (v - f);
   let note = "auto-bellows";
 
-  // α115:
+  // α116:
   // 手入力距離モードでは、センサー面→被写体面の距離を優先する。
   // 薄レンズ基準の object distance u は、おおまかに
   // センサー→被写体距離 - 像距離v として扱う。
@@ -140,7 +140,7 @@ function focusAngleFor(s){
   const rawFocus = angleFromVertical(objectP, sch);
   const focusBranch = focusAngleWithScheimpflugX(s, sch, objectP);
 
-  // α115: レンズ面とセンサー面がほぼ平行な0°付近では、
+  // α116: レンズ面とセンサー面がほぼ平行な0°付近では、
   // Scheimpflug交点が無限遠側へ移動し、atan2の枝が切り替わる。
   // その近傍だけカメラ面側から従来解へ連続的に接続する。
   const blendStart = 0.35;
@@ -167,32 +167,74 @@ function scheimpflugXDistance(s, sch){
 }
 
 function focusAngleWithScheimpflugX(s, sch, objectP){
-  // α115: Scheimpflug交点までのXを使って、±90°付近のfocus面を補正。
-  const raw = angleFromVertical(objectP, sch);
-  const oldNear = (typeof planeAngleNear === "function") ? planeAngleNear(raw, s.product) : raw;
-  const X = scheimpflugXDistance(s, sch);
-  if(!X || !isFinite(X) || X < 0.001) return oldNear;
+  return focusXDebugFor(s, sch, objectP).usedFocus;
+}
 
+
+function focusXDebugFor(s, sch, objectP){
   const d = opticsDistances();
+  if(!sch){
+    const fallback = normDeg(s.camera);
+    return {
+      oldFocus: fallback,
+      xFocus: null,
+      usedFocus: fallback,
+      xUsed: false,
+      reason: "parallel",
+      xDistance: null,
+      theta1X: null,
+      oldDiff: planeDiff(s.product, fallback),
+      xDiff: null
+    };
+  }
+
+  const raw = angleFromVertical(objectP, sch);
+  const oldFocus = (typeof planeAngleNear === "function") ? planeAngleNear(raw, s.product) : raw;
+
+  const X = scheimpflugXDistance(s, sch);
   const lensAngle = s.camera + s.front;
   const sensorAngle = s.camera + s.rear;
   const theta2 = (typeof planeDiff === "function") ? planeDiff(s.product, sensorAngle) : angleDiff(s.product, sensorAngle);
   const lensSensorTheta = (typeof planeDiff === "function") ? planeDiff(lensAngle, sensorAngle) : angleDiff(lensAngle, sensorAngle);
 
-  const zPrime = Math.abs(X * Math.tan(rad(lensSensorTheta)));
-  const z = Math.max(0.001, d.u);
-  const theta1 = deg(Math.atan(Math.tan(rad(theta2)) * (zPrime / z)));
+  let xFocus = null;
+  let theta1 = null;
+  let reason = "no-x";
+  if(X && isFinite(X) && X >= 0.001){
+    const zPrime = Math.abs(X * Math.tan(rad(lensSensorTheta)));
+    const z = Math.max(0.001, d.u);
+    theta1 = deg(Math.atan(Math.tan(rad(theta2)) * (zPrime / z)));
+    xFocus = sensorAngle + theta1;
+    xFocus = (typeof planeAngleNear === "function") ? planeAngleNear(xFocus, s.product) : xFocus;
+    reason = "computed";
+  }
 
-  let corrected = sensorAngle + theta1;
-  corrected = (typeof planeAngleNear === "function") ? planeAngleNear(corrected, s.product) : corrected;
+  const oldDiff = (typeof planeDiff === "function") ? planeDiff(s.product, oldFocus) : angleDiff(s.product, oldFocus);
+  const xDiff = (typeof xFocus === "number") ? ((typeof planeDiff === "function") ? planeDiff(s.product, xFocus) : angleDiff(s.product, xFocus)) : null;
 
   const nearWeight = Math.max(0, Math.min(1, (Math.abs(s.product) - 70) / 20));
-  if(nearWeight <= 0) return oldNear;
+  let usedFocus = oldFocus;
+  let xUsed = false;
 
-  const oldDiff = (typeof planeDiff === "function") ? planeDiff(s.product, oldNear) : angleDiff(s.product, oldNear);
-  const newDiff = (typeof planeDiff === "function") ? planeDiff(s.product, corrected) : angleDiff(s.product, corrected);
+  if(typeof xFocus === "number" && nearWeight > 0 && Math.abs(xDiff) <= Math.abs(oldDiff)){
+    usedFocus = xFocus;
+    xUsed = true;
+    reason = "x-used";
+  }else if(typeof xFocus === "number"){
+    reason = nearWeight <= 0 ? "standard-angle" : "old-closer";
+  }
 
-  return Math.abs(newDiff) <= Math.abs(oldDiff) ? corrected : oldNear;
+  return {
+    oldFocus,
+    xFocus,
+    usedFocus,
+    xUsed,
+    reason,
+    xDistance: X,
+    theta1X: theta1,
+    oldDiff,
+    xDiff
+  };
 }
 
 function planeCalculationDebugFor(s){
@@ -248,7 +290,14 @@ function planeCalculationDebugFor(s){
     scheimState: stateText,
     nearMinus90,
     scheimXDistance: sch ? scheimpflugXDistance(s, sch) : null,
-    theta1X: sch ? planeDiff(focusAngleWithScheimpflugX(s, sch, objectP), sensorAngle) : null
+    theta1X: sch ? planeDiff(focusAngleWithScheimpflugX(s, sch, objectP), sensorAngle) : null,
+    focusOld: sch ? focusXDebugFor(s, sch, objectP).oldFocus : null,
+    focusX: sch ? focusXDebugFor(s, sch, objectP).xFocus : null,
+    focusUsed: sch ? focusXDebugFor(s, sch, objectP).usedFocus : null,
+    focusXUsed: sch ? focusXDebugFor(s, sch, objectP).xUsed : false,
+    focusXReason: sch ? focusXDebugFor(s, sch, objectP).reason : "parallel",
+    focusOldDiff: sch ? focusXDebugFor(s, sch, objectP).oldDiff : null,
+    focusXDiff: sch ? focusXDebugFor(s, sch, objectP).xDiff : null
   };
 }
 
