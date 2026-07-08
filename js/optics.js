@@ -53,17 +53,20 @@ function angleFromVertical(p1,p2){
 }
 
 
-function lineAngleDiff180(a,b){
-  // Plane angles are directionless: a and a+180° represent the same physical plane.
+
+function planeDiff(a,b){
+  // α106: 面/線の角度差。180°反転しても同じ面として扱う。
   let d = normDeg(a - b);
-  if(d > 90) d -= 180;
-  if(d < -90) d += 180;
+  while(d > 90) d -= 180;
+  while(d <= -90) d += 180;
   return d;
 }
-function equivalentPlaneAngleNear(a,ref){
-  // Choose the equivalent branch of angle a that is closest to ref.
-  return normDeg(ref + lineAngleDiff180(a, ref));
+function planeAngleNear(a,ref){
+  return normDeg(ref + planeDiff(a, ref));
 }
+
+function lineAngleDiff180(a,b){ return planeDiff(a,b); }
+function equivalentPlaneAngleNear(a,ref){ return planeAngleNear(a,ref); }
 
 function opticsDistances(){
   const f = Math.max(1, +$('focal').value || 180);
@@ -83,9 +86,9 @@ function focusAngleFor(s){
   const d = opticsDistances();
   const lensAngle = s.camera + s.front;
   const sensorAngle = s.camera + s.rear;
-  const rel = Math.abs(lineAngleDiff180(lensAngle, sensorAngle));
+  const rel = Math.abs(planeDiff(lensAngle, sensorAngle));
 
-  const cameraBranch = equivalentPlaneAngleNear(s.camera, s.product);
+  const cameraBranch = planeAngleNear(s.camera, s.product);
 
   if(rel < 0.05){
     return cameraBranch;
@@ -103,17 +106,17 @@ function focusAngleFor(s){
   }
 
   const rawFocus = angleFromVertical(objectP, sch);
-  const focusBranch = equivalentPlaneAngleNear(rawFocus, s.product);
+  const focusBranch = planeAngleNear(rawFocus, s.product);
 
-  // α105: レンズ面とセンサー面がほぼ平行な0°付近では、
+  // α106: レンズ面とセンサー面がほぼ平行な0°付近では、
   // Scheimpflug交点が無限遠側へ移動し、atan2の枝が切り替わる。
   // その近傍だけカメラ面側から従来解へ連続的に接続する。
   const blendStart = 0.35;
   const blendEnd = 3.0;
   if(rel < blendEnd){
     const t = clamp((rel - blendStart) / (blendEnd - blendStart), 0, 1);
-    const blended = cameraBranch + lineAngleDiff180(focusBranch, cameraBranch) * t;
-    return equivalentPlaneAngleNear(blended, s.product);
+    const blended = cameraBranch + planeDiff(focusBranch, cameraBranch) * t;
+    return planeAngleNear(blended, s.product);
   }
 
   return focusBranch;
@@ -132,11 +135,11 @@ function focusDebugFor(s){
   const sch = lineIntersection(lensP,lensD,sensorP,sensorD);
   if(!sch){
     const a = normDeg(s.camera);
-    return {focusAngle:a, diff:angleDiff(s.product,a), scheimX:null, scheimY:null, scheimState:"parallel"};
+    return {focusAngle:a, diff:planeDiff(s.product,a), scheimX:null, scheimY:null, scheimState:"parallel"};
   }
   const rawFocus = angleFromVertical(objectP,sch);
   const focusAngle = (typeof equivalentPlaneAngleNear==="function") ? equivalentPlaneAngleNear(rawFocus,s.product) : rawFocus;
-  const diff = (typeof lineAngleDiff180==="function") ? lineAngleDiff180(s.product,focusAngle) : angleDiff(s.product,focusAngle);
+  const diff = planeDiff(s.product,focusAngle);
   return {focusAngle, rawFocus, diff, scheimX:sch.x, scheimY:sch.y, scheimState:"ok"};
 }
 
