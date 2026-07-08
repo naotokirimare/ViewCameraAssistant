@@ -105,7 +105,7 @@ function focusAngleFor(s){
   const rawFocus = angleFromVertical(objectP, sch);
   const focusBranch = equivalentPlaneAngleNear(rawFocus, s.product);
 
-  // α99: レンズ面とセンサー面がほぼ平行な0°付近では、
+  // α100: レンズ面とセンサー面がほぼ平行な0°付近では、
   // Scheimpflug交点が無限遠側へ移動し、atan2の枝が切り替わる。
   // その近傍だけカメラ面側から従来解へ連続的に接続する。
   const blendStart = 0.35;

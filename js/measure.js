@@ -89,7 +89,7 @@ function rawToTiltSwing(e){
 
   if(isScreenLandscape()){
     // 背面垂直・横画面:
-    // Tiltはα99で正常だった動きを維持。
+    // Tiltはα100で正常だった動きを維持。
     // Swingは、横画面時にスマホを左右に振る（方位を変える）動きで変化するよう
     // 背面水平と同じ -alpha 系を使う。
     return {
@@ -111,7 +111,7 @@ function rawToTiltSwing(e){
 
 
 function stabilizeTiltByStartReference(rawTilt){
-  // α99:
+  // α100:
   // Tiltだけ、測定開始時の生Tiltを内部基準として固定する。
   // iPhone beta由来の0°付近の符号/枝ゆれを、基準からの相対Tiltとして扱う。
   // 光学計算に渡す値は「現在Tilt - 開始時Tilt」なので、ピント面の物理角度は相対値として維持される。
@@ -172,7 +172,7 @@ function captureFlightRecorder(reason, current){
 
   const now = new Date();
   const lines = [
-    `ViewCameraAssistant v1α99 Flight Recorder`,
+    `ViewCameraAssistant v1α100 Flight Recorder`,
     `${now.toLocaleString()}`,
     `reason: ${reason}`,
     ``,
@@ -228,7 +228,7 @@ function checkAndCaptureJump(mapped){
   state.sensor.jumpCapturePrev = current;
   if(!prev || state.sensor.jumpCaptured) return;
 
-  // α99:
+  // α100:
   // 実機症状に合わせて「Tilt 0°付近で1〜2°だけ飛ぶ瞬間」を狙って記録する。
   // displayTilt が -2°〜+2°付近にいる時だけ監視。
   // 1フレームで1°以上変化したら記録。
@@ -290,7 +290,7 @@ function setupJumpCaptureButtons(){
 
 
 function updateNearZeroTiltAverage(){
-  // α99:
+  // α100:
   // 0°付近の判定用にdisplay Tiltの短時間平均を作る。
   // 光学計算・反映値は丸めず、実測値をそのまま使う。
   if(!state.sensor.tiltAvgFrames) state.sensor.tiltAvgFrames = [];
@@ -329,7 +329,7 @@ function resetNearZeroTiltAverage(){
 
 
 function updateNearZeroTiltHysteresis(){
-  // α99:
+  // α100:
   // 0°境界付近の+/-切り替えがパタパタするのを抑える表示用ヒステリシス。
   // 光学計算・測定値反映は丸めず、実測値をそのまま使う。
   const v = state.sensor.tilt;
@@ -396,6 +396,7 @@ function updateMeasureDebug(mapped){
   if($("dbgTilt")) $("dbgTilt").textContent = fmtDbg(state.sensor.tilt);
   if($("dbgTiltAvg")) $("dbgTiltAvg").textContent = (typeof state.sensor.tiltAvg === "number") ? (state.sensor.tiltAvg.toFixed(2) + "° / " + (state.sensor.tiltAvgCount || 0) + "f") : "-";
   if($("dbgTiltHyst")) $("dbgTiltHyst").textContent = (typeof state.sensor.tiltHyst === "number") ? state.sensor.tiltHyst.toFixed(2) + "°" : "-";
+  if($("dbgTiltApplied")) $("dbgTiltApplied").textContent = fmtDbg(getDiagramTiltValue());
   if($("dbgTiltHystSide")) $("dbgTiltHystSide").textContent = state.sensor.tiltHystSide || "-";
   if($("dbgTiltZeroJudge")) $("dbgTiltZeroJudge").textContent = state.sensor.tiltZeroJudge || "-";
   if($("dbgSwing")) $("dbgSwing").textContent = fmtDbg(state.sensor.swing);
@@ -611,6 +612,19 @@ function toggleLiveApply(){
   setLiveApply(!state.sensor.liveApply);
 }
 
+
+function getDiagramTiltValue(){
+  // α100:
+  // α99まではヒステリシス値をDebug表示だけに使っていたため、
+  // リアルタイム反映の図は生Tiltでパタついていた。
+  // 0°付近だけ図への反映値にヒステリシスを使う。
+  // 範囲外では必ず実測Tiltに戻す。
+  if(typeof state.sensor.tiltHyst === "number" && Math.abs(state.sensor.tilt) <= 2.2){
+    return state.sensor.tiltHyst;
+  }
+  return state.sensor.tilt;
+}
+
 function applyMeasurementToModel(showMessage=true){
   const targetSelect = $("measureTarget");
   const target = targetSelect ? targetSelect.value : (state.sensor.target || "front");
@@ -624,7 +638,7 @@ function applyMeasurementToModel(showMessage=true){
 
   // 測定値を反映するときは、現在表示されている値を使う。
   // Camera基準から相対計測中なら、Camera / 被写体面 / Front / Rear すべてが基準からの相対角として反映される。
-  const tilt = state.sensor.tilt;
+  const tilt = getDiagramTiltValue();
   const swing = state.sensor.swing;
 
   if(target === "front"){
