@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ViewCamera Assistant v1.0α118</title>
-<link rel="stylesheet" href="css/style.css?v=118">
+<title>ViewCamera Assistant v1.0α119</title>
+<link rel="stylesheet" href="css/style.css?v=119">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#ffffff">
@@ -12,7 +12,7 @@
 <body>
 <div id="app">
 <section id="shoot" class="screen active">
-<header class="top"><div><div class="title">ビューカメラ・シミュレーター</div><div class="sub" id="viewName">横断面 / Tilt</div></div><div class="version">v1.0α118</div></header>
+<header class="top"><div><div class="title">ビューカメラ・シミュレーター</div><div class="sub" id="viewName">横断面 / Tilt</div></div><div class="version">v1.0α119</div></header>
 <div class="seg"><button id="sideBtn" class="on">横断面</button><button id="topBtn">俯瞰</button></div>
 <main class="stage2d"><svg id="svg2d" viewBox="0 0 390 650" preserveAspectRatio="xMidYMid meet">
 <g id="sideView"><line id="sideProduct" class="line product"/><line id="sideFocus" class="line focus"/><line id="sideScheimLineA" class="scheimLine"/><line id="sideScheimLineB" class="scheimLine"/><line id="sideScheimLineC" class="scheimLine"/><circle id="sideScheimPoint" r="6" class="scheim"/><line id="sideCameraAxis" class="line camera"/><rect id="sideBody" class="body" rx="12"/><line id="sideLens" class="line front"/><line id="sideSensor" class="line rear"/><circle id="sideProductCenter" r="9" class="centerMark"/><circle id="sideProductCenterDot" r="2.8" class="centerMarkInner"/><circle id="sideCameraH" r="12" fill="#c7c7cc"/><circle id="sideLensH" r="13" fill="#64d2ff"/><circle id="sideSensorH" r="13" fill="#ff9f0a"/><text id="sideProductLabel" class="label">被写体 Tilt</text><text id="sideLensLabel" class="label frontText">レンズ面</text><text id="sideSensorLabel" class="label rearText">センサー面</text><text id="sideFocusLabel" class="label focusText">ピント面</text></g>
@@ -183,10 +183,10 @@
     </div>
 
   </section>
-<section id="info" class="screen formScreen"><div class="box"><h1>情報</h1><div class="row"><div class="a">横断面</div><div class="b">Tilt</div></div><div class="row"><div class="a">俯瞰図</div><div class="b">Swing</div></div><div class="row"><div class="a">倍率</div><div class="b" id="infoMag">0.92×</div></div><div class="row"><div class="a">F値</div><div class="b" id="infoF">F16</div></div><div class="row"><div class="a">実効F値</div><div class="b" id="infoEffF">F30.7</div></div><div class="row"><div class="a">CoC</div><div class="b" id="infoCoC">0.015mm</div></div><p>α118は複数ファイル構成へ移行したモバイルUI改善版です。</p></div></section>
+<section id="info" class="screen formScreen"><div class="box"><h1>情報</h1><div class="row"><div class="a">横断面</div><div class="b">Tilt</div></div><div class="row"><div class="a">俯瞰図</div><div class="b">Swing</div></div><div class="row"><div class="a">倍率</div><div class="b" id="infoMag">0.92×</div></div><div class="row"><div class="a">F値</div><div class="b" id="infoF">F16</div></div><div class="row"><div class="a">実効F値</div><div class="b" id="infoEffF">F30.7</div></div><div class="row"><div class="a">CoC</div><div class="b" id="infoCoC">0.015mm</div></div><p>α119はピント面の描画をFocus used/シャインプルーフ交点基準に固定した検証版です。</p></div></section>
 <nav id="tabs"><button class="tab on" data-go="shoot"><span>📐</span>撮影</button><button class="tab" id="switchView"><span>🔄</span>横/俯瞰</button><button class="tab" data-go="threeD"><span>🧊</span>3D</button><button class="tab" data-go="setup"><span>⚙️</span>設定</button><button class="tab" data-go="measure"><span>📲</span>測定</button></nav>
 </div>
-<script src="js/state.js?v=118"></script><script src="js/optics.js?v=118"></script><script src="js/draw2d.js?v=118"></script><script src="js/draw3d.js?v=118"></script><script src="js/measure.js?v=118"></script><script src="js/app.js?v=118"></script>
+<script src="js/state.js?v=119"></script><script src="js/optics.js?v=119"></script><script src="js/draw2d.js?v=119"></script><script src="js/draw3d.js?v=119"></script><script src="js/measure.js?v=119"></script><script src="js/app.js?v=119"></script>
 </body></html>
 
       <label>θ1式モード
@@ -198,7 +198,7 @@
           <option value="D">D: atan(z/X)</option>
         </select>
       </label>
-      <p class="hint">α118検証用。-90°付近でどのθ1式が実機に近いか比較します。</p>
+      <p class="hint">α119検証用。-90°付近でどのθ1式が実機に近いか比較します。</p>
 
       <label>θ2の定義
         <select id="theta2Definition">
@@ -207,4 +207,4 @@
           <option value="LS" selected>L-S（レンズ−センサー）</option>
         </select>
       </label>
-      <p class="hint">α118検証用。実機の合焦レンズTiltに対応させるため、初期値は L-S（レンズ−センサー）です。</p>
+      <p class="hint">α119検証用。実機の合焦レンズTiltに対応させるため、初期値は L-S（レンズ−センサー）です。</p>
