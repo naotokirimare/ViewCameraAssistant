@@ -1,4 +1,17 @@
 
+function subjectTiltDisplayOnly(a){
+  // α108: 表示専用。内部計算値は絶対に変更しない。
+  // 水平台は90°付近、垂直面は0°付近として読めるようにする。
+  let v = Math.abs(normDeg(a));
+  if(v > 180) v = 360 - v;
+  if(v > 90) v = 180 - v;
+  return 90 - v;
+}
+function fmtSubjectTiltDisplayOnly(a){
+  return subjectTiltDisplayOnly(a).toFixed(1) + "°";
+}
+
+
 const LENS_DB = {
   "Schneider": {
     "Macro-Symmar HM": [80, 120, 180],
