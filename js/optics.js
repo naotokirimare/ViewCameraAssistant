@@ -55,7 +55,7 @@ function angleFromVertical(p1,p2){
 
 
 function planeDiff(a,b){
-  // α112: 面/線の角度差。180°反転しても同じ面として扱う。
+  // α113: 面/線の角度差。180°反転しても同じ面として扱う。
   let d = normDeg(a - b);
   while(d > 90) d -= 180;
   while(d <= -90) d += 180;
@@ -89,7 +89,7 @@ function opticsDistances(){
   let u = (f * v) / (v - f);
   let note = "auto-bellows";
 
-  // α112:
+  // α113:
   // 手入力距離モードでは、センサー面→被写体面の距離を優先する。
   // 薄レンズ基準の object distance u は、おおまかに
   // センサー→被写体距離 - 像距離v として扱う。
@@ -140,7 +140,7 @@ function focusAngleFor(s){
   const rawFocus = angleFromVertical(objectP, sch);
   const focusBranch = planeAngleNear(rawFocus, s.product);
 
-  // α112: レンズ面とセンサー面がほぼ平行な0°付近では、
+  // α113: レンズ面とセンサー面がほぼ平行な0°付近では、
   // Scheimpflug交点が無限遠側へ移動し、atan2の枝が切り替わる。
   // その近傍だけカメラ面側から従来解へ連続的に接続する。
   const blendStart = 0.35;
@@ -154,6 +154,63 @@ function focusAngleFor(s){
   return focusBranch;
 }
 
+
+
+function planeCalculationDebugFor(s){
+  const d = opticsDistances();
+  const lensAngle = s.camera + s.front;
+  const sensorAngle = s.camera + s.rear;
+  const lensP = {x:0,y:0};
+  const sensorP = {x:d.v,y:0};
+  const objectP = {x:-d.u,y:0};
+  const lensD = dirFromPlaneAngle(lensAngle);
+  const sensorD = dirFromPlaneAngle(sensorAngle);
+  const sch = lineIntersection(lensP,lensD,sensorP,sensorD);
+
+  let rawFocus = null;
+  let focusNear = null;
+  let pd = null;
+  let ad = null;
+  let sx = null;
+  let sy = null;
+  let stateText = "parallel";
+
+  if(sch){
+    rawFocus = angleFromVertical(objectP, sch);
+    focusNear = (typeof planeAngleNear === "function") ? planeAngleNear(rawFocus, s.product) :
+                ((typeof equivalentPlaneAngleNear === "function") ? equivalentPlaneAngleNear(rawFocus, s.product) : rawFocus);
+    pd = (typeof planeDiff === "function") ? planeDiff(s.product, focusNear) :
+         ((typeof lineAngleDiff180 === "function") ? lineAngleDiff180(s.product, focusNear) : angleDiff(s.product, focusNear));
+    ad = angleDiff(s.product, focusNear);
+    sx = sch.x;
+    sy = sch.y;
+    stateText = "ok";
+  }else{
+    focusNear = normDeg(s.camera);
+    pd = (typeof planeDiff === "function") ? planeDiff(s.product, focusNear) : angleDiff(s.product, focusNear);
+    ad = angleDiff(s.product, focusNear);
+  }
+
+  const productNorm = normDeg(s.product);
+  const productAbs = Math.abs(productNorm);
+  const nearMinus90 = Math.abs(productNorm + 90);
+
+  return {
+    productRaw: s.product,
+    productNorm,
+    focusRaw: rawFocus,
+    focusNear,
+    planeDiffValue: pd,
+    angleDiffValue: ad,
+    lensAngle,
+    sensorAngle,
+    relLensSensor: (typeof planeDiff === "function") ? planeDiff(lensAngle, sensorAngle) : angleDiff(lensAngle, sensorAngle),
+    scheimX: sx,
+    scheimY: sy,
+    scheimState: stateText,
+    nearMinus90
+  };
+}
 
 function focusDebugFor(s){
   const d = opticsDistances();
