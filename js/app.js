@@ -1,8 +1,4 @@
 
-
-
-
-
 const LENS_DB = {
   "Schneider": {
     "Macro-Symmar HM": [80, 120, 180],
