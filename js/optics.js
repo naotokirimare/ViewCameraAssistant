@@ -55,7 +55,7 @@ function angleFromVertical(p1,p2){
 
 
 function planeDiff(a,b){
-  // α106: 面/線の角度差。180°反転しても同じ面として扱う。
+  // α107: 面/線の角度差。180°反転しても同じ面として扱う。
   let d = normDeg(a - b);
   while(d > 90) d -= 180;
   while(d <= -90) d += 180;
@@ -67,6 +67,23 @@ function planeAngleNear(a,ref){
 
 function lineAngleDiff180(a,b){ return planeDiff(a,b); }
 function equivalentPlaneAngleNear(a,ref){ return planeAngleNear(a,ref); }
+
+
+function subjectDisplayAngle(a){
+  // α107:
+  // 被写体Tiltの表示専用角度。
+  // 内部計算では面角度をそのまま使うが、表示は実物の面角度に近い読みへ変換する。
+  // 水平な台 ≒ 90°、垂直面 ≒ 0°。
+  // line/planeとして等価な180°違いを見やすい0〜180°系に寄せる。
+  let v = Math.abs(normDeg(a));
+  if(v > 180) v = 360 - v;
+  if(v > 90) v = 180 - v;
+  // これまでの内部値は法線寄りに表示されやすいため、面表示は90°基準へ変換。
+  return 90 - v;
+}
+function fmtSubjectDisplayAngle(a){
+  return subjectDisplayAngle(a).toFixed(1) + "°";
+}
 
 function opticsDistances(){
   const f = Math.max(1, +$('focal').value || 180);
@@ -108,7 +125,7 @@ function focusAngleFor(s){
   const rawFocus = angleFromVertical(objectP, sch);
   const focusBranch = planeAngleNear(rawFocus, s.product);
 
-  // α106: レンズ面とセンサー面がほぼ平行な0°付近では、
+  // α107: レンズ面とセンサー面がほぼ平行な0°付近では、
   // Scheimpflug交点が無限遠側へ移動し、atan2の枝が切り替わる。
   // その近傍だけカメラ面側から従来解へ連続的に接続する。
   const blendStart = 0.35;
