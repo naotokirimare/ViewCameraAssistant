@@ -115,45 +115,29 @@ function opticsDistances(){
 }
 
 function focusAngleFor(s){
+  // α122: 逆算モード。
+  // 「ピント面を計算して描く」のではなく、被写体面に合焦している前提で
+  // ピント面は被写体面そのものとして扱う。
+  // 必要なレンズFrontは requiredFrontForProduct() で別途逆算する。
+  return planeAngleNear(s.product, s.product);
+}
+
+function requiredFrontForProduct(s){
+  // α122: 被写体面とセンサー面の交点をScheimpflug共通点とし、
+  // レンズ中心からその共通点を通るレンズ面を逆算する。
   const d = opticsDistances();
-  const lensAngle = s.camera + s.front;
   const sensorAngle = s.camera + s.rear;
-  const rel = Math.abs(planeDiff(lensAngle, sensorAngle));
-
-  const cameraBranch = planeAngleNear(s.camera, s.product);
-
-  if(rel < 0.05){
-    return cameraBranch;
-  }
-
   const lensP = {x:0,y:0};
   const sensorP = {x:d.v,y:0};
   const objectP = {x:-d.u,y:0};
-  const lensD = dirFromPlaneAngle(lensAngle);
+  const productD = dirFromPlaneAngle(s.product);
   const sensorD = dirFromPlaneAngle(sensorAngle);
-  const sch = lineIntersection(lensP,lensD,sensorP,sensorD);
-
-  if(!sch){
-    return cameraBranch;
-  }
-
-  const rawFocus = angleFromVertical(objectP, sch);
-  const focusBranch = planeAngleNear(rawFocus, s.product);
-
-  // α113: レンズ面とセンサー面がほぼ平行な0°付近では、
-  // Scheimpflug交点が無限遠側へ移動し、atan2の枝が切り替わる。
-  // その近傍だけカメラ面側から従来解へ連続的に接続する。
-  const blendStart = 0.35;
-  const blendEnd = 3.0;
-  if(rel < blendEnd){
-    const t = clamp((rel - blendStart) / (blendEnd - blendStart), 0, 1);
-    const blended = cameraBranch + planeDiff(focusBranch, cameraBranch) * t;
-    return planeAngleNear(blended, s.product);
-  }
-
-  return focusBranch;
+  const sch = lineIntersection(objectP, productD, sensorP, sensorD);
+  if(!sch) return s.front || 0;
+  const lensAbsRaw = angleFromVertical(lensP, sch);
+  const lensAbs = planeAngleNear(lensAbsRaw, s.camera + s.front);
+  return planeDiff(lensAbs, s.camera);
 }
-
 
 
 function planeCalculationDebugFor(s){
@@ -232,16 +216,6 @@ function focusDebugFor(s){
   return {focusAngle, rawFocus, diff, scheimX:sch.x, scheimY:sch.y, scheimState:"ok"};
 }
 
-function requiredFrontForProduct(s){
-  // 実機テスト用: 被写体面とセンサー面の交点を通るレンズ面角を逆算。
-  const d=opticsDistances();
-  const objectP={x:-d.u,y:0}, sensorP={x:d.v,y:0}, lensP={x:0,y:0};
-  const productD=dirFromPlaneAngle(s.product), sensorD=dirFromPlaneAngle(s.camera+s.rear);
-  const sch=lineIntersection(objectP,productD,sensorP,sensorD);
-  if(!sch)return 0;
-  const lensAbs=angleFromVertical(lensP,sch);
-  return normDeg(lensAbs-s.camera);
-}
 
 function guideTextFor(d){const a=Math.abs(d);if(a<2)return'OK';return(d>0?'+':'-')+a.toFixed(1)+'°'}
 function updateInfo(){
