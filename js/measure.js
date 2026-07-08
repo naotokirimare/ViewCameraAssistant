@@ -1,13 +1,6 @@
 
-function subjectTiltDisplayOnlyLocal(a){
-  let v = Math.abs(normDeg(a));
-  if(v > 180) v = 360 - v;
-  if(v > 90) v = 180 - v;
-  return 90 - v;
-}
-function fmtSubjectTiltDisplayOnly(a){
-  return subjectTiltDisplayOnlyLocal(a).toFixed(1) + "°";
-}
+
+
 
 function updateReferenceHelp(){
   const ref = $("measureReference") ? $("measureReference").value : state.sensor.reference || "vertical";
@@ -96,7 +89,7 @@ function rotationMatrixFromDeviceOrientation(alphaDeg,betaDeg,gammaDeg){
 }
 
 function matrixTiltForVertical(alpha,beta,gamma){
-  // α108 trial:
+  // α109 trial:
   // Euler角を一度回転行列へ戻し、端末の画面法線/上方向の姿勢からTiltを取り出す。
   // beta±90°の境界で直接符号が切り替わるのを避ける目的。
   const m = rotationMatrixFromDeviceOrientation(alpha,beta,gamma);
@@ -136,14 +129,14 @@ function rawToTiltSwing(e){
   }
 
   // 背面垂直:
-  // α108 trial: Tiltはalpha/beta/gammaを回転行列へ戻して算出する。
+  // α109 trial: Tiltはalpha/beta/gammaを回転行列へ戻して算出する。
   const portraitTilt = matrixTiltForVertical(alpha,beta,gamma);
   const portraitSwing = angle180(-(alpha + gamma));
   state.sensor.tiltMethod = "rotationMatrix";
 
   if(isScreenLandscape()){
     // 背面垂直・横画面:
-    // Tiltはα108で正常だった動きを維持。
+    // Tiltはα109で正常だった動きを維持。
     // Swingは、横画面時にスマホを左右に振る（方位を変える）動きで変化するよう
     // 背面水平と同じ -alpha 系を使う。
     return {
@@ -165,7 +158,7 @@ function rawToTiltSwing(e){
 
 
 function stabilizeTiltByStartReference(rawTilt){
-  // α108:
+  // α109:
   // Tiltだけ、測定開始時の生Tiltを内部基準として固定する。
   // iPhone beta由来の0°付近の符号/枝ゆれを、基準からの相対Tiltとして扱う。
   // 光学計算に渡す値は「現在Tilt - 開始時Tilt」なので、ピント面の物理角度は相対値として維持される。
@@ -226,7 +219,7 @@ function captureFlightRecorder(reason, current){
 
   const now = new Date();
   const lines = [
-    `ViewCameraAssistant v1α108 Flight Recorder`,
+    `ViewCameraAssistant v1α109 Flight Recorder`,
     `${now.toLocaleString()}`,
     `reason: ${reason}`,
     ``,
@@ -282,7 +275,7 @@ function checkAndCaptureJump(mapped){
   state.sensor.jumpCapturePrev = current;
   if(!prev || state.sensor.jumpCaptured) return;
 
-  // α108:
+  // α109:
   // 実機症状に合わせて「Tilt 0°付近で1〜2°だけ飛ぶ瞬間」を狙って記録する。
   // displayTilt が -2°〜+2°付近にいる時だけ監視。
   // 1フレームで1°以上変化したら記録。
@@ -344,7 +337,7 @@ function setupJumpCaptureButtons(){
 
 
 function updateNearZeroTiltAverage(){
-  // α108:
+  // α109:
   // 0°付近の判定用にdisplay Tiltの短時間平均を作る。
   // 光学計算・反映値は丸めず、実測値をそのまま使う。
   if(!state.sensor.tiltAvgFrames) state.sensor.tiltAvgFrames = [];
@@ -383,7 +376,7 @@ function resetNearZeroTiltAverage(){
 
 
 function updateNearZeroTiltHysteresis(){
-  // α108:
+  // α109:
   // 0°境界付近の+/-切り替えがパタパタするのを抑える表示用ヒステリシス。
   // 光学計算・測定値反映は丸めず、実測値をそのまま使う。
   const v = state.sensor.tilt;
@@ -461,7 +454,7 @@ function updateMeasureDebug(mapped){
   if($("dbgCamera")) $("dbgCamera").textContent = fmtDbg(side.camera);
   if($("dbgFront")) $("dbgFront").textContent = fmtDbg(side.front);
   if($("dbgRear")) $("dbgRear").textContent = fmtDbg(side.rear);
-  if($("dbgProduct")) $("dbgProduct").textContent = fmtSubjectTiltDisplayOnly(side.product);
+  if($("dbgProduct")) $("dbgProduct").textContent = fmtDbg(side.product);
 
   if(typeof focusDebugFor === "function"){
     const fd = focusDebugFor(side);
@@ -680,7 +673,7 @@ function toggleLiveApply(){
 
 
 function clampMeasuredAngleForTarget(target, value){
-  // α108: 被写体面だけは±90°で折り返さず、±180°まで連続値として扱う。
+  // α109: 被写体面だけは±90°で折り返さず、±180°まで連続値として扱う。
   if(target === "product") return clamp(value, -180, 180);
   return clamp(value, -90, 90);
 }
