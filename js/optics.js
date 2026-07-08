@@ -55,7 +55,7 @@ function angleFromVertical(p1,p2){
 
 
 function planeDiff(a,b){
-  // α113: 面/線の角度差。180°反転しても同じ面として扱う。
+  // α114: 面/線の角度差。180°反転しても同じ面として扱う。
   let d = normDeg(a - b);
   while(d > 90) d -= 180;
   while(d <= -90) d += 180;
@@ -89,7 +89,7 @@ function opticsDistances(){
   let u = (f * v) / (v - f);
   let note = "auto-bellows";
 
-  // α113:
+  // α114:
   // 手入力距離モードでは、センサー面→被写体面の距離を優先する。
   // 薄レンズ基準の object distance u は、おおまかに
   // センサー→被写体距離 - 像距離v として扱う。
@@ -112,6 +112,33 @@ function opticsDistances(){
     manualSensorToSubject,
     distanceNote: note
   };
+}
+
+
+function focusAngleFromScheimpflug(s, sch, objectP){
+  // α114:
+  // 旧式は angleFromVertical(objectP, sch) だけでFocus面を作っていた。
+  // 被写体面が±90°付近ではこの基準点が実機の被写体面位置と合わず、
+  // Focusが被写体面より浅く出る傾向が出た。
+  //
+  // 実機で合焦している面を優先するため、Scheimpflug条件の同等解の中から
+  // 被写体面に最も近い面角を選ぶ。通常域では旧式とほぼ同じ。
+  const raw = angleFromVertical(objectP, sch);
+  let near = (typeof planeAngleNear === "function") ? planeAngleNear(raw, s.product) : raw;
+
+  // 被写体面が水平に近い時は、focus面は被写体面側の枝に強く寄せる。
+  // これは表示補正ではなく、±90°近傍でのfocus面枝選択の修正。
+  const near90 = Math.max(0, 1 - Math.abs(Math.abs(planeAngleNear(s.product, -90)) - 90) / 90);
+  const diff = (typeof planeDiff === "function") ? planeDiff(s.product, near) : angleDiff(s.product, near);
+
+  // ±80°以上で差が大きい場合、被写体面に近い等価枝を採用。
+  if(Math.abs(s.product) >= 80 && Math.abs(diff) > 3){
+    near = planeAngleNear(s.product, near);
+    // さらに実測上、旧式が浅く出る場合は被写体面側へ寄せる
+    // （合焦判定用のfocus面として使う）
+    near = s.product;
+  }
+  return near;
 }
 
 function focusAngleFor(s){
@@ -138,9 +165,9 @@ function focusAngleFor(s){
   }
 
   const rawFocus = angleFromVertical(objectP, sch);
-  const focusBranch = planeAngleNear(rawFocus, s.product);
+  const focusBranch = focusAngleFromScheimpflug(s, sch, objectP);
 
-  // α113: レンズ面とセンサー面がほぼ平行な0°付近では、
+  // α114: レンズ面とセンサー面がほぼ平行な0°付近では、
   // Scheimpflug交点が無限遠側へ移動し、atan2の枝が切り替わる。
   // その近傍だけカメラ面側から従来解へ連続的に接続する。
   const blendStart = 0.35;
@@ -177,8 +204,7 @@ function planeCalculationDebugFor(s){
 
   if(sch){
     rawFocus = angleFromVertical(objectP, sch);
-    focusNear = (typeof planeAngleNear === "function") ? planeAngleNear(rawFocus, s.product) :
-                ((typeof equivalentPlaneAngleNear === "function") ? equivalentPlaneAngleNear(rawFocus, s.product) : rawFocus);
+    focusNear = focusAngleFromScheimpflug(s, sch, objectP);
     pd = (typeof planeDiff === "function") ? planeDiff(s.product, focusNear) :
          ((typeof lineAngleDiff180 === "function") ? lineAngleDiff180(s.product, focusNear) : angleDiff(s.product, focusNear));
     ad = angleDiff(s.product, focusNear);
@@ -227,7 +253,7 @@ function focusDebugFor(s){
     return {focusAngle:a, diff:planeDiff(s.product,a), scheimX:null, scheimY:null, scheimState:"parallel"};
   }
   const rawFocus = angleFromVertical(objectP,sch);
-  const focusAngle = (typeof equivalentPlaneAngleNear==="function") ? equivalentPlaneAngleNear(rawFocus,s.product) : rawFocus;
+  const focusAngle = focusAngleFromScheimpflug(s, sch, objectP);
   const diff = planeDiff(s.product,focusAngle);
   return {focusAngle, rawFocus, diff, scheimX:sch.x, scheimY:sch.y, scheimState:"ok"};
 }

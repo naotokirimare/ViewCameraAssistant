@@ -85,7 +85,7 @@ function rotationMatrixFromDeviceOrientation(alphaDeg,betaDeg,gammaDeg){
 }
 
 function matrixTiltForVertical(alpha,beta,gamma){
-  // α113 trial:
+  // α114 trial:
   // Euler角を一度回転行列へ戻し、端末の画面法線/上方向の姿勢からTiltを取り出す。
   // beta±90°の境界で直接符号が切り替わるのを避ける目的。
   const m = rotationMatrixFromDeviceOrientation(alpha,beta,gamma);
@@ -125,14 +125,14 @@ function rawToTiltSwing(e){
   }
 
   // 背面垂直:
-  // α113 trial: Tiltはalpha/beta/gammaを回転行列へ戻して算出する。
+  // α114 trial: Tiltはalpha/beta/gammaを回転行列へ戻して算出する。
   const portraitTilt = matrixTiltForVertical(alpha,beta,gamma);
   const portraitSwing = angle180(-(alpha + gamma));
   state.sensor.tiltMethod = "rotationMatrix";
 
   if(isScreenLandscape()){
     // 背面垂直・横画面:
-    // Tiltはα113で正常だった動きを維持。
+    // Tiltはα114で正常だった動きを維持。
     // Swingは、横画面時にスマホを左右に振る（方位を変える）動きで変化するよう
     // 背面水平と同じ -alpha 系を使う。
     return {
@@ -154,7 +154,7 @@ function rawToTiltSwing(e){
 
 
 function stabilizeTiltByStartReference(rawTilt){
-  // α113:
+  // α114:
   // Tiltだけ、測定開始時の生Tiltを内部基準として固定する。
   // iPhone beta由来の0°付近の符号/枝ゆれを、基準からの相対Tiltとして扱う。
   // 光学計算に渡す値は「現在Tilt - 開始時Tilt」なので、ピント面の物理角度は相対値として維持される。
@@ -215,7 +215,7 @@ function captureFlightRecorder(reason, current){
 
   const now = new Date();
   const lines = [
-    `ViewCameraAssistant v1α113 Flight Recorder`,
+    `ViewCameraAssistant v1α114 Flight Recorder`,
     `${now.toLocaleString()}`,
     `reason: ${reason}`,
     ``,
@@ -271,7 +271,7 @@ function checkAndCaptureJump(mapped){
   state.sensor.jumpCapturePrev = current;
   if(!prev || state.sensor.jumpCaptured) return;
 
-  // α113:
+  // α114:
   // 実機症状に合わせて「Tilt 0°付近で1〜2°だけ飛ぶ瞬間」を狙って記録する。
   // displayTilt が -2°〜+2°付近にいる時だけ監視。
   // 1フレームで1°以上変化したら記録。
@@ -333,7 +333,7 @@ function setupJumpCaptureButtons(){
 
 
 function updateNearZeroTiltAverage(){
-  // α113:
+  // α114:
   // 0°付近の判定用にdisplay Tiltの短時間平均を作る。
   // 光学計算・反映値は丸めず、実測値をそのまま使う。
   if(!state.sensor.tiltAvgFrames) state.sensor.tiltAvgFrames = [];
@@ -372,7 +372,7 @@ function resetNearZeroTiltAverage(){
 
 
 function updateNearZeroTiltHysteresis(){
-  // α113:
+  // α114:
   // 0°境界付近の+/-切り替えがパタパタするのを抑える表示用ヒステリシス。
   // 光学計算・測定値反映は丸めず、実測値をそのまま使う。
   const v = state.sensor.tilt;
@@ -481,6 +481,7 @@ function updateMeasureDebug(mapped){
     if($("dbgPlaneProductNorm")) $("dbgPlaneProductNorm").textContent = fmtDbg(pc.productNorm);
     if($("dbgPlaneFocusRaw")) $("dbgPlaneFocusRaw").textContent = fmtDbg(pc.focusRaw);
     if($("dbgPlaneFocusNear")) $("dbgPlaneFocusNear").textContent = fmtDbg(pc.focusNear);
+    if($("dbgFocusBasis")) $("dbgFocusBasis").textContent = (Math.abs(side.product) >= 80 ? "subject-near" : "standard");
     if($("dbgPlaneDiff")) $("dbgPlaneDiff").textContent = fmtDbg(pc.planeDiffValue);
     if($("dbgAngleDiff")) $("dbgAngleDiff").textContent = fmtDbg(pc.angleDiffValue);
     if($("dbgLensAngle")) $("dbgLensAngle").textContent = fmtDbg(pc.lensAngle);
@@ -685,14 +686,14 @@ function toggleLiveApply(){
 
 
 function clampMeasuredAngleForTarget(target, value){
-  // α113: 被写体面だけは±90°で折り返さず、±180°まで連続値として扱う。
+  // α114: 被写体面だけは±90°で折り返さず、±180°まで連続値として扱う。
   if(target === "product") return clamp(value, -180, 180);
   return clamp(value, -90, 90);
 }
 
 
 function applyMeasurementSnapshot(showMessage=true){
-  // α113: α113ベースに、現在値反映の固定処理だけ追加。
+  // α114: α114ベースに、現在値反映の固定処理だけ追加。
   const wasLive = !!state.sensor.liveApply;
   if(wasLive){
     state.sensor.liveApply = false;
