@@ -51,21 +51,11 @@ function dirFromPlaneAngle(aDeg){
 function angleFromVertical(p1,p2){
   return normDeg(deg(Math.atan2(p2.y-p1.y,p2.x-p1.x))-90);
 }
-function cameraAxisDir(aDeg){
-  // α123: u/v距離は画面固定X軸ではなく、カメラ光軸方向へ置く。
-  // 90°付近で抜けていたカメラ高さ成分(X/Y)をここで復帰。
-  const a = rad(aDeg);
-  return {x:Math.cos(a), y:Math.sin(a)};
-}
-function opticalPointOnAxis(s, dist){
-  const a = cameraAxisDir(s.camera);
-  return {x:a.x * dist, y:a.y * dist};
-}
 
 
 
 function planeDiff(a,b){
-  // α113: 面/線の角度差。180°反転しても同じ面として扱う。
+  // α124: 面/線の角度差。180°反転しても同じ面として扱う。
   let d = normDeg(a - b);
   while(d > 90) d -= 180;
   while(d <= -90) d += 180;
@@ -99,7 +89,7 @@ function opticsDistances(){
   let u = (f * v) / (v - f);
   let note = "auto-bellows";
 
-  // α113:
+  // α124:
   // 手入力距離モードでは、センサー面→被写体面の距離を優先する。
   // 薄レンズ基準の object distance u は、おおまかに
   // センサー→被写体距離 - 像距離v として扱う。
@@ -125,7 +115,6 @@ function opticsDistances(){
 }
 
 function focusAngleFor(s){
-  const d = opticsDistances();
   const lensAngle = s.camera + s.front;
   const sensorAngle = s.camera + s.rear;
   const rel = Math.abs(planeDiff(lensAngle, sensorAngle));
@@ -136,32 +125,17 @@ function focusAngleFor(s){
     return cameraBranch;
   }
 
-  const lensP = {x:0,y:0};
-  const sensorP = opticalPointOnAxis(s, d.v);
-  const objectP = opticalPointOnAxis(s, -d.u);
-  const lensD = dirFromPlaneAngle(lensAngle);
-  const sensorD = dirFromPlaneAngle(sensorAngle);
-  const sch = lineIntersection(lensP,lensD,sensorP,sensorD);
+  // α124:
+  // 測定値変換・iPhoneセンサー処理には一切触らず、113の描画/入力系を維持。
+  // ただしピント面の判定だけを「被写体面に合うための必要Front」と比較する方式に変更。
+  // 旧式の objectP={x:-u,y:0} → Scheimpflug交点 でピント角を直接作る方式は、
+  // 被写体角が -90° 付近の実機テストで約10°ズレたため、ここでは使わない。
+  const targetFront = requiredFrontForProduct(s);
+  const frontError = planeDiff(s.front, targetFront);
 
-  if(!sch){
-    return cameraBranch;
-  }
-
-  const rawFocus = angleFromVertical(objectP, sch);
-  const focusBranch = planeAngleNear(rawFocus, s.product);
-
-  // α113: レンズ面とセンサー面がほぼ平行な0°付近では、
-  // Scheimpflug交点が無限遠側へ移動し、atan2の枝が切り替わる。
-  // その近傍だけカメラ面側から従来解へ連続的に接続する。
-  const blendStart = 0.35;
-  const blendEnd = 3.0;
-  if(rel < blendEnd){
-    const t = clamp((rel - blendStart) / (blendEnd - blendStart), 0, 1);
-    const blended = cameraBranch + planeDiff(focusBranch, cameraBranch) * t;
-    return planeAngleNear(blended, s.product);
-  }
-
-  return focusBranch;
+  // current front == target front なら、ピント面は被写体面と一致する。
+  // 差分表示は front の不足/過多をそのままピント面のズレとして出す。
+  return planeAngleNear(s.product + frontError, s.product);
 }
 
 
@@ -171,8 +145,8 @@ function planeCalculationDebugFor(s){
   const lensAngle = s.camera + s.front;
   const sensorAngle = s.camera + s.rear;
   const lensP = {x:0,y:0};
-  const sensorP = opticalPointOnAxis(s, d.v);
-  const objectP = opticalPointOnAxis(s, -d.u);
+  const sensorP = {x:d.v,y:0};
+  const objectP = {x:-d.u,y:0};
   const lensD = dirFromPlaneAngle(lensAngle);
   const sensorD = dirFromPlaneAngle(sensorAngle);
   const sch = lineIntersection(lensP,lensD,sensorP,sensorD);
@@ -186,15 +160,16 @@ function planeCalculationDebugFor(s){
   let stateText = "parallel";
 
   if(sch){
-    rawFocus = angleFromVertical(objectP, sch);
-    focusNear = (typeof planeAngleNear === "function") ? planeAngleNear(rawFocus, s.product) :
-                ((typeof equivalentPlaneAngleNear === "function") ? equivalentPlaneAngleNear(rawFocus, s.product) : rawFocus);
+    rawFocus = angleFromVertical(objectP, sch); // legacy raw value, debug only
+    const targetFront = requiredFrontForProduct(s);
+    const frontError = planeDiff(s.front, targetFront);
+    focusNear = planeAngleNear(s.product + frontError, s.product);
     pd = (typeof planeDiff === "function") ? planeDiff(s.product, focusNear) :
          ((typeof lineAngleDiff180 === "function") ? lineAngleDiff180(s.product, focusNear) : angleDiff(s.product, focusNear));
     ad = angleDiff(s.product, focusNear);
     sx = sch.x;
     sy = sch.y;
-    stateText = "ok";
+    stateText = "α124-inverse-front";
   }else{
     focusNear = normDeg(s.camera);
     pd = (typeof planeDiff === "function") ? planeDiff(s.product, focusNear) : angleDiff(s.product, focusNear);
@@ -218,6 +193,8 @@ function planeCalculationDebugFor(s){
     scheimX: sx,
     scheimY: sy,
     scheimState: stateText,
+    targetFront: requiredFrontForProduct(s),
+    frontError: planeDiff(s.front, requiredFrontForProduct(s)),
     nearMinus90
   };
 }
@@ -227,8 +204,8 @@ function focusDebugFor(s){
   const lensAngle = s.camera + s.front;
   const sensorAngle = s.camera + s.rear;
   const lensP = {x:0,y:0};
-  const sensorP = opticalPointOnAxis(s, d.v);
-  const objectP = opticalPointOnAxis(s, -d.u);
+  const sensorP = {x:d.v,y:0};
+  const objectP = {x:-d.u,y:0};
   const lensD = dirFromPlaneAngle(lensAngle);
   const sensorD = dirFromPlaneAngle(sensorAngle);
   const sch = lineIntersection(lensP,lensD,sensorP,sensorD);
