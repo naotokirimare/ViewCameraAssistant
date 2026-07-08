@@ -116,7 +116,8 @@ function setupLensSelectors(){
   function applyFocal(){
     const mm = parseFloat(String(focalSel.value).replace("mm",""));
     if(!Number.isNaN(mm)) focal.value = mm;
-    update();
+    ["distanceMode","subjectDistanceM"].forEach(id=>{const el=$(id);if(el)el.addEventListener("input",update);if(el)el.addEventListener("change",update);});
+  update();
   }
 
   maker.addEventListener("change", updateSeries);

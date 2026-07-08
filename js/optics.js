@@ -55,7 +55,7 @@ function angleFromVertical(p1,p2){
 
 
 function planeDiff(a,b){
-  // α111: 面/線の角度差。180°反転しても同じ面として扱う。
+  // α112: 面/線の角度差。180°反転しても同じ面として扱う。
   let d = normDeg(a - b);
   while(d > 90) d -= 180;
   while(d <= -90) d += 180;
@@ -68,18 +68,50 @@ function planeAngleNear(a,ref){
 function lineAngleDiff180(a,b){ return planeDiff(a,b); }
 function equivalentPlaneAngleNear(a,ref){ return planeAngleNear(a,ref); }
 
+
+function getDistanceMode(){
+  return $("distanceMode") ? $("distanceMode").value : "auto";
+}
+function getManualSubjectDistanceMM(){
+  const m = $("subjectDistanceM") ? (+$("subjectDistanceM").value || 0) : 0;
+  return m > 0 ? m * 1000 : 0;
+}
+
 function opticsDistances(){
   const f = Math.max(1, +$('focal').value || 180);
   const rawBellows = +$('bellows').value || 345;
   const correction = getBellowsCorrection();
   const vRaw = rawBellows + correction;
-  // image distance / 実効蛇腹長
-  // v must be slightly larger than f for the thin-lens object distance calculation.
-  // magRaw is kept from the true effective bellows so the correction is reflected exactly.
-  const v = Math.max(f + 0.001, vRaw);
-  const u = (f * v) / (v - f); // thin lens equation: 1/f = 1/u + 1/v
+  const mode = getDistanceMode();
+  const manualSensorToSubject = getManualSubjectDistanceMM();
+
+  let v = Math.max(f + 0.001, vRaw);
+  let u = (f * v) / (v - f);
+  let note = "auto-bellows";
+
+  // α112:
+  // 手入力距離モードでは、センサー面→被写体面の距離を優先する。
+  // 薄レンズ基準の object distance u は、おおまかに
+  // センサー→被写体距離 - 像距離v として扱う。
+  // これにより蛇腹長からの逆算誤差を切り分ける。
+  if(mode === "manual" && manualSensorToSubject > v + 1){
+    u = Math.max(1, manualSensorToSubject - v);
+    note = "manual-subject-distance";
+  }
+
   const magRaw = vRaw / f - 1;
-  return { f, v, u, mag: magRaw, rawBellows, correction, effectiveBellows: vRaw };
+  return {
+    f,
+    v,
+    u,
+    mag: magRaw,
+    rawBellows,
+    correction,
+    effectiveBellows: vRaw,
+    distanceMode: mode,
+    manualSensorToSubject,
+    distanceNote: note
+  };
 }
 
 function focusAngleFor(s){
@@ -108,7 +140,7 @@ function focusAngleFor(s){
   const rawFocus = angleFromVertical(objectP, sch);
   const focusBranch = planeAngleNear(rawFocus, s.product);
 
-  // α111: レンズ面とセンサー面がほぼ平行な0°付近では、
+  // α112: レンズ面とセンサー面がほぼ平行な0°付近では、
   // Scheimpflug交点が無限遠側へ移動し、atan2の枝が切り替わる。
   // その近傍だけカメラ面側から従来解へ連続的に接続する。
   const blendStart = 0.35;
