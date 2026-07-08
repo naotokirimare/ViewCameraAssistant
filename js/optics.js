@@ -55,7 +55,7 @@ function angleFromVertical(p1,p2){
 
 
 function planeDiff(a,b){
-  // α117: 面/線の角度差。180°反転しても同じ面として扱う。
+  // α118: 面/線の角度差。180°反転しても同じ面として扱う。
   let d = normDeg(a - b);
   while(d > 90) d -= 180;
   while(d <= -90) d += 180;
@@ -89,7 +89,7 @@ function opticsDistances(){
   let u = (f * v) / (v - f);
   let note = "auto-bellows";
 
-  // α117:
+  // α118:
   // 手入力距離モードでは、センサー面→被写体面の距離を優先する。
   // 薄レンズ基準の object distance u は、おおまかに
   // センサー→被写体距離 - 像距離v として扱う。
@@ -140,7 +140,7 @@ function focusAngleFor(s){
   const rawFocus = angleFromVertical(objectP, sch);
   const focusBranch = focusAngleWithScheimpflugX(s, sch, objectP);
 
-  // α117: レンズ面とセンサー面がほぼ平行な0°付近では、
+  // α118: レンズ面とセンサー面がほぼ平行な0°付近では、
   // Scheimpflug交点が無限遠側へ移動し、atan2の枝が切り替わる。
   // その近傍だけカメラ面側から従来解へ連続的に接続する。
   const blendStart = 0.35;
@@ -176,12 +176,31 @@ function getThetaFormulaMode(){
   return $("thetaFormulaMode") ? $("thetaFormulaMode").value : "old";
 }
 
+
+function getTheta2Definition(){
+  return $("theta2Definition") ? $("theta2Definition").value : "LS";
+}
+function theta2ValuesFor(s){
+  const lensAngle = s.camera + s.front;
+  const sensorAngle = s.camera + s.rear;
+  return {
+    PS: (typeof planeDiff === "function") ? planeDiff(s.product, sensorAngle) : angleDiff(s.product, sensorAngle),
+    PL: (typeof planeDiff === "function") ? planeDiff(s.product, lensAngle) : angleDiff(s.product, lensAngle),
+    LS: (typeof planeDiff === "function") ? planeDiff(lensAngle, sensorAngle) : angleDiff(lensAngle, sensorAngle)
+  };
+}
+function selectedTheta2For(s){
+  const vals = theta2ValuesFor(s);
+  const def = getTheta2Definition();
+  return vals[def] ?? vals.LS;
+}
+
 function thetaFormulaCompareFor(s, sch, objectP){
   const d = opticsDistances();
   const lensAngle = s.camera + s.front;
   const sensorAngle = s.camera + s.rear;
   const X = sch ? scheimpflugXDistance(s, sch) : null;
-  const theta2 = (typeof planeDiff === "function") ? planeDiff(s.product, sensorAngle) : angleDiff(s.product, sensorAngle);
+  const theta2 = selectedTheta2For(s);
   const lensSensorTheta = (typeof planeDiff === "function") ? planeDiff(lensAngle, sensorAngle) : angleDiff(lensAngle, sensorAngle);
   const zPrime = (X && isFinite(X)) ? Math.abs(X * Math.tan(rad(lensSensorTheta))) : null;
   const z = Math.max(0.001, d.u);
@@ -209,6 +228,8 @@ function thetaFormulaCompareFor(s, sch, objectP){
 
   return {
     mode: getThetaFormulaMode(),
+    theta2Def: getTheta2Definition(),
+    theta2Vals: theta2ValuesFor(s),
     X, z, zPrime, ratio, theta2, tanTheta2,
     thetaA, focusA, diffA: diffOf(focusA),
     thetaB, focusB, diffB: diffOf(focusB),
@@ -240,7 +261,7 @@ function focusXDebugFor(s, sch, objectP){
   const X = scheimpflugXDistance(s, sch);
   const lensAngle = s.camera + s.front;
   const sensorAngle = s.camera + s.rear;
-  const theta2 = (typeof planeDiff === "function") ? planeDiff(s.product, sensorAngle) : angleDiff(s.product, sensorAngle);
+  const theta2 = selectedTheta2For(s);
   const lensSensorTheta = (typeof planeDiff === "function") ? planeDiff(lensAngle, sensorAngle) : angleDiff(lensAngle, sensorAngle);
 
   let xFocus = null;
